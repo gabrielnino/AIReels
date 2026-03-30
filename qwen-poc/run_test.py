@@ -4,7 +4,7 @@ from service.image_service import generate_images
 # Use public image URLs (Alibaba documentation sample images)
 # This avoids needing to upload local files and matches the working reference implementation
 test_images = [
-    "https://help-static-aliyun-doc.aliyuncs.com/file-manage-files/zh-CN/20250925/thtclx/input1.png",
+    "https://thumbs.dreamstime.com/b/slim-teen-girl-blue-dress-white-background-girl-blue-dress-128302673.jpg",
     "https://help-static-aliyun-doc.aliyuncs.com/file-manage-files/zh-CN/20250925/iclsnx/input2.png",
     "https://help-static-aliyun-doc.aliyuncs.com/file-manage-files/zh-CN/20250925/gborgw/input3.png",
 ]
