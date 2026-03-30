@@ -3,7 +3,7 @@ import dashscope
 from dashscope import MultiModalConversation
 from utils.file_utils import to_file_uri, download_image
 from models.request_models import GenerateImageRequest
-from typing import List
+from typing import List, Tuple
 
 # Load environment variables
 from dotenv import load_dotenv
@@ -18,80 +18,82 @@ def _is_url(path: str) -> bool:
     return path.startswith("http://") or path.startswith("https://")
 
 
-def generate_images(request_data: GenerateImageRequest) -> List[str]:
-    """
-    Builds the request using DashScope and the model qwen-image-2.0-pro.
-    Uses the international endpoint (dashscope-intl.aliyuncs.com).
-    """
-    api_key = os.environ.get("DASHSCOPE_API_KEY")
-    if not api_key:
-        raise ValueError("DASHSCOPE_API_KEY not found in environment variables.")
-
-    # Build message content — support both public URLs and local file paths
+def _build_messages(request_data: GenerateImageRequest) -> list:
+    """Builds the messages payload for the DashScope multimodal API."""
     messages_content = []
-
     for img in request_data.images:
         if _is_url(img):
             messages_content.append({"image": img})
         else:
-            uri = to_file_uri(img)
-            messages_content.append({"image": uri})
-
-    # Add text prompt
+            messages_content.append({"image": to_file_uri(img)})
     messages_content.append({"text": request_data.prompt})
+    return [{"role": "user", "content": messages_content}]
 
-    messages = [
-        {
-            "role": "user",
-            "content": messages_content
-        }
-    ]
 
+def _call_api(request_data: GenerateImageRequest):
+    """Calls the DashScope multimodal API and returns the raw response."""
+    api_key = os.environ.get("DASHSCOPE_API_KEY")
+    if not api_key:
+        raise ValueError("DASHSCOPE_API_KEY not found in environment variables.")
+    return MultiModalConversation.call(
+        api_key=api_key,
+        model='qwen-image-2.0-pro',
+        messages=_build_messages(request_data),
+        result_format='message',
+        stream=False,
+        n=request_data.n,
+        negative_prompt=request_data.negative_prompt or "",
+        watermark=True,
+        **(({"seed": request_data.seed} if request_data.seed is not None else {})),
+    )
+
+
+def _extract_image_urls(response) -> List[str]:
+    """Parses the API response and returns a list of CDN image URLs."""
+    urls = []
     try:
-        response = MultiModalConversation.call(
-            api_key=api_key,
-            model='qwen-image-2.0-pro',
-            messages=messages,
-            result_format='message',
-            stream=False,
-            n=request_data.n,
-            negative_prompt=request_data.negative_prompt or "",
-            watermark=True,
-            **(({"seed": request_data.seed} if request_data.seed is not None else {})),
-        )
+        choice = response.output.choices[0]
+        if hasattr(choice, 'message') and hasattr(choice.message, 'content'):
+            for item in choice.message.content:
+                if isinstance(item, dict) and 'image' in item:
+                    urls.append(item['image'])
+    except AttributeError:
+        output_choices = response.output.get('choices', [])
+        if output_choices:
+            content = output_choices[0].get('message', {}).get('content', [])
+            for item in content:
+                if isinstance(item, dict) and 'image' in item:
+                    urls.append(item['image'])
+    return urls
 
-        # Parse the response to extract image URLs
-        if response.status_code == 200:
-            print(f"API Call Success: {response}")
 
-            output_paths = []
+def generate_image_urls(request_data: GenerateImageRequest) -> List[str]:
+    """
+    Generates images and returns their raw CDN URLs (without downloading).
+    Useful for chaining directly into video generation.
+    """
+    response = _call_api(request_data)
+    if response.status_code == 200:
+        urls = _extract_image_urls(response)
+        print(f"[image] Generated {len(urls)} image URL(s)")
+        return urls
+    else:
+        raise RuntimeError(f"DashScope API Error {response.status_code}: {response.message}")
 
-            try:
-                choice = response.output.choices[0]
-                if hasattr(choice, 'message') and hasattr(choice.message, 'content'):
-                    for item in choice.message.content:
-                        if isinstance(item, dict) and 'image' in item:
-                            url = item['image']
-                            local_file = download_image(url)
-                            if local_file:
-                                output_paths.append(local_file)
-            except AttributeError as e:
-                print(f"Parsing structure error, checking pure dict format: {e}")
-                output_choices = response.output.get('choices', [])
-                if output_choices:
-                    content = output_choices[0].get('message', {}).get('content', [])
-                    for item in content:
-                        if isinstance(item, dict) and 'image' in item:
-                            url = item['image']
-                            local_file = download_image(url)
-                            if local_file:
-                                output_paths.append(local_file)
 
-            return output_paths
-        else:
-            print(f"Failed API Call: Code: {response.status_code}, Msg: {response.message}")
-            raise RuntimeError(f"DashScope API Error {response.status_code}: {response.message}")
-
+def generate_images(request_data: GenerateImageRequest) -> List[str]:
+    """
+    Generates images, downloads them to outputs/, and returns local file paths.
+    Uses the international endpoint (dashscope-intl.aliyuncs.com).
+    """
+    try:
+        urls = generate_image_urls(request_data)
+        output_paths = []
+        for url in urls:
+            local_file = download_image(url)
+            if local_file:
+                output_paths.append(local_file)
+        return output_paths
     except Exception as e:
-        print(f"Exception during DashScope call: {e}")
+        print(f"Exception during DashScope image generation: {e}")
         raise e
