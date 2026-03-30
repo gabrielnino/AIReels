@@ -1,0 +1,28 @@
+Traceback (most recent call last):
+  File "F:\AIReels\qwen-poc\run_test.py", line 30, in <module>
+    output_paths = generate_images(request_data)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "F:\AIReels\qwen-poc\service\image_service.py", line 92, in generate_images
+    raise e
+  File "F:\AIReels\qwen-poc\service\image_service.py", line 40, in generate_images
+    response = MultiModalConversation.call(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "F:\AIReels\qwen-poc\venv\Lib\site-packages\dashscope\aigc\multimodal_conversation.py", line 108, in call
+    has_upload = cls._preprocess_messages(model, msg_copy, api_key)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "F:\AIReels\qwen-poc\venv\Lib\site-packages\dashscope\aigc\multimodal_conversation.py", line 197, in _preprocess_messages
+    ) = preprocess_message_element(
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "F:\AIReels\qwen-poc\venv\Lib\site-packages\dashscope\utils\oss_utils.py", line 288, in preprocess_message_element
+    is_upload, cert = check_and_upload(
+                      ^^^^^^^^^^^^^^^^^
+  File "F:\AIReels\qwen-poc\venv\Lib\site-packages\dashscope\utils\oss_utils.py", line 255, in check_and_upload
+    ) = check_and_upload_local(
+        ^^^^^^^^^^^^^^^^^^^^^^^
+  File "F:\AIReels\qwen-poc\venv\Lib\site-packages\dashscope\utils\oss_utils.py", line 202, in check_and_upload_local
+    raise InvalidInput(f"The file: {file_path} is not exists!")
+dashscope.common.error.InvalidInput: The file: /F:/AIReels/qwen-poc/test_image.jpg is not exists!
+Downloaded test image to F:\AIReels\qwen-poc\test_image.jpg
+Calling generate_images (this may take a minute)...
+Exception during DashScope call: The file: /F:/AIReels/qwen-poc/test_image.jpg is not exists!
+Test failed with exception: The file: /F:/AIReels/qwen-poc/test_image.jpg is not exists!
