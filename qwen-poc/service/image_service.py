@@ -1,5 +1,6 @@
 import os
 import dashscope
+import logging
 from dashscope import MultiModalConversation
 from utils.file_utils import to_file_uri, download_image
 from models.request_models import GenerateImageRequest
@@ -72,10 +73,12 @@ def generate_image_urls(request_data: GenerateImageRequest) -> List[str]:
     Generates images and returns their raw CDN URLs (without downloading).
     Useful for chaining directly into video generation.
     """
+    logging.info(f"[image_service.generate_image_urls] input values - request_data: {request_data.model_dump() if hasattr(request_data, 'model_dump') else request_data}")
     response = _call_api(request_data)
     if response.status_code == 200:
         urls = _extract_image_urls(response)
         print(f"[image] Generated {len(urls)} image URL(s)")
+        logging.info(f"[image_service.generate_image_urls] output values: {urls}")
         return urls
     else:
         raise RuntimeError(f"DashScope API Error {response.status_code}: {response.message}")
@@ -86,6 +89,7 @@ def generate_images(request_data: GenerateImageRequest) -> List[str]:
     Generates images, downloads them to outputs/, and returns local file paths.
     Uses the international endpoint (dashscope-intl.aliyuncs.com).
     """
+    logging.info(f"[image_service.generate_images] input values - request_data: {request_data.model_dump() if hasattr(request_data, 'model_dump') else request_data}")
     try:
         urls = generate_image_urls(request_data)
         output_paths = []
@@ -93,6 +97,7 @@ def generate_images(request_data: GenerateImageRequest) -> List[str]:
             local_file = download_image(url)
             if local_file:
                 output_paths.append(local_file)
+        logging.info(f"[image_service.generate_images] output values: {output_paths}")
         return output_paths
     except Exception as e:
         print(f"Exception during DashScope image generation: {e}")

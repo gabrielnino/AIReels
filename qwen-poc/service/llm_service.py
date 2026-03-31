@@ -1,4 +1,5 @@
 import os
+import logging
 from openai import OpenAI
 from dotenv import load_dotenv
 
@@ -30,6 +31,7 @@ def generate_text(prompt: str, model: str = "qwen3.5-flash", system_prompt: str 
     Returns:
         The generated text string.
     """
+    logging.info(f"[llm_service.generate_text] input values - prompt: {prompt}, model: {model}, system_prompt: {system_prompt}")
     client = get_llm_client()
     
     messages = []
@@ -45,7 +47,9 @@ def generate_text(prompt: str, model: str = "qwen3.5-flash", system_prompt: str 
             model=model,
             messages=messages
         )
-        return completion.choices[0].message.content
+        result = completion.choices[0].message.content
+        logging.info(f"[llm_service.generate_text] output values: {result}")
+        return result
     except Exception as e:
         print(f"[llm] Error communicating with DashScope LLM: {e}")
         raise

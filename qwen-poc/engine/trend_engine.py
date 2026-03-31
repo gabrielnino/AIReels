@@ -6,13 +6,18 @@ def fetch_search_trends() -> list:
     """Executes strategic queries to find recent events and trends."""
     queries = [
         "events vancouver this week",
-        "trending food vancouver"
+        "trending food vancouver",
+        "trending news vancouver",
+        "trending sports vancouver",
+        "beer, wine, spirits vancouver",
+        "nightlife vancouver",
+        "live music vancouver"
     ]
     
     raw_results = []
     for q in queries:
         try:
-            res = search(q, count=5)
+            res = search(q, count=10)
             # Safe extraction for Brave Search format
             if res and res.get("web", {}).get("results"):
                 raw_results.extend(res["web"]["results"])

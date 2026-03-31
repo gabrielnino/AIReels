@@ -1,5 +1,6 @@
 import os
 import requests
+import logging
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -23,6 +24,7 @@ def search(query: str, count: int = 5) -> dict:
     Returns:
         JSON response dictionary from the Brave Search API.
     """
+    logging.info(f"[search_service.search] input values - query: {query}, count: {count}")
     api_key = _get_api_key()
     
     headers = {
@@ -41,7 +43,9 @@ def search(query: str, count: int = 5) -> dict:
     try:
         response = requests.get(SEARCH_API_BASE_URL, headers=headers, params=params, timeout=15)
         response.raise_for_status()
-        return response.json()
+        result = response.json()
+        logging.info(f"[search_service.search] output values: {result}")
+        return result
     except requests.exceptions.RequestException as e:
         print(f"[search] Failed to reach Brave Search API. Error: {e}")
         # Re-raise so the caller can handle it

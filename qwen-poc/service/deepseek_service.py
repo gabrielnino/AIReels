@@ -1,4 +1,5 @@
 import os
+import logging
 from openai import OpenAI
 from dotenv import load_dotenv
 
@@ -30,6 +31,7 @@ def generate_deepseek_text(prompt: str, model: str = "deepseek-chat", system_pro
     Returns:
         The generated text string.
     """
+    logging.info(f"[deepseek_service.generate_deepseek_text] input values - prompt: {prompt}, model: {model}, system_prompt: {system_prompt}")
     client = get_deepseek_client()
     
     messages = []
@@ -45,7 +47,9 @@ def generate_deepseek_text(prompt: str, model: str = "deepseek-chat", system_pro
             model=model,
             messages=messages
         )
-        return completion.choices[0].message.content
+        result = completion.choices[0].message.content
+        logging.info(f"[deepseek_service.generate_deepseek_text] output values: {result}")
+        return result
     except Exception as e:
         print(f"[deepseek] Error communicating with DeepSeek API: {e}")
         raise
