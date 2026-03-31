@@ -18,3 +18,6 @@ venv/
 
 # Outputs
 outputs/
+
+images/
+videos/
