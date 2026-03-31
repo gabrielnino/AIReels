@@ -12,8 +12,8 @@ class GenerateImageRequest(BaseModel):
 
     @field_validator('images')
     def validate_images(cls, v):
-        if not (1 <= len(v) <= 3):
-            raise ValueError('Exactly 1 to 3 images must be provided.')
+        if not (0 <= len(v) <= 3):
+            raise ValueError('Exactly 0 to 3 images must be provided.')
         for img in v:
             is_url = img.startswith("http://") or img.startswith("https://")
             if not is_url and not os.path.exists(img):

@@ -1,0 +1,78 @@
+from engine.memory_engine import init_db, save_topic, update_topic_status
+from engine.trend_engine import run_trend_engine
+from engine.decision_engine import run_decision_engine
+from engine.content_engine import run_content_engine
+import time
+
+def run_reels_pipeline(execute_content: bool = True):
+    print("====================================")
+    print("🚀 STARTED REELS AUTOMATION PIPELINE")
+    print("====================================")
+    
+    # 0. Initialize Memory DB
+    init_db()
+    
+    # 1. Trend Engine: Extract candidates
+    print("\n>>> STEP 1: DETECTING TRENDS")
+    candidate_topics = run_trend_engine()
+    
+    if not candidate_topics:
+        print("[Pipeline] No valid topics generated. Exiting.")
+        return
+        
+    print(f"[Pipeline] Discovered {len(candidate_topics)} potential topic(s):")
+    for t in candidate_topics:
+        print(f" - {t}")
+        
+    # 2. Decision Engine: Filter & LLM Score via DeepSeek
+    print("\n>>> STEP 2: DECISION ENGINE (FILTERING & SCORING)")
+    winning_topic_data = run_decision_engine(candidate_topics)
+    
+    if not winning_topic_data:
+        print("[Pipeline] No topics survived the filters and memory check. Exiting.")
+        return
+        
+    topic = winning_topic_data.get("topic")
+    score = winning_topic_data.get("final_score")
+    reason = winning_topic_data.get("reason")
+    
+    print(f"\n[Pipeline] 🏆 WINNING TOPIC SELECTED: '{topic}'")
+    print(f"[Pipeline] Score: {score}/10")
+    print(f"[Pipeline] Rationale: {reason}")
+    
+    # 3. Store Memory Context
+    # Add winning topic to database to prevent immediate reuse
+    topic_id = save_topic(topic, status="selected", score=score)
+    if topic_id:
+        print(f"[Pipeline] Saved to memory (ID: {topic_id})")
+        
+    if not execute_content:
+        print("\n[Pipeline] Execution completed (run_content disabled in param).")
+        return
+        
+    # 4. Content Engine: Generation
+    print("\n>>> STEP 3: CONTENT ENGINE (GENERATING ASSETS)")
+    try:
+        start_time = time.time()
+        final_assets = run_content_engine(topic)
+        
+        # Output artifacts
+        print("\n====================================")
+        print("🎉 REELS GENERATION COMPLETE!")
+        print(f"Time Taken: {int(time.time() - start_time)} seconds")
+        print(f"Theme: {final_assets['topic']}")
+        print(f"Image Prompt Used: {final_assets['base_prompt']}")
+        print(f"Base Image URL: {final_assets['image_url']}")
+        print(f"Final Reel Video Path: {final_assets['final_video_path']}")
+        print("====================================")
+        
+        # 5. Finalize DB entry (simulated schedule publishing state)
+        update_topic_status(topic, "published")
+        
+    except Exception as e:
+        print(f"\n[Pipeline] Fatal error during content generation: {e}")
+        update_topic_status(topic, "failed")
+
+if __name__ == "__main__":
+    # execute_content determines if the full pipeline runs. If false it only searches and decides
+    run_reels_pipeline(execute_content=True)

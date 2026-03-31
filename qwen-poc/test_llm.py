@@ -5,7 +5,7 @@ def test_llm():
     print("Testing Qwen LLM Service...")
     
     # Passing the exact model requested
-    model_name = "qwen-max"
+    model_name = "qwen3.5-flash"
     query = "Who are you and what version are you?"
     
     try:
