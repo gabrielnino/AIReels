@@ -3,7 +3,26 @@ from engine.trend_engine import run_trend_engine
 from engine.decision_engine import run_decision_engine
 from engine.content_engine import run_content_engine
 import time
+import sys
+import os
 
+class LoggerWriter:
+    def __init__(self, filepath):
+        self.terminal = sys.stdout
+        os.makedirs(os.path.dirname(filepath), exist_ok=True)
+        self.log = open(filepath, "a", encoding="utf-8")
+        self.log.write(f"\n\n--- NEW RUN: {time.strftime('%Y-%m-%d %H:%M:%S')} ---\n")
+        
+    def write(self, message):
+        self.terminal.write(message)
+        self.log.write(message)
+        self.log.flush()
+        
+    def flush(self):
+        self.terminal.flush()
+        self.log.flush()
+
+sys.stdout = LoggerWriter("logs/pipeline.log")
 def run_reels_pipeline(execute_content: bool = True):
     print("====================================")
     print("🚀 STARTED REELS AUTOMATION PIPELINE")
