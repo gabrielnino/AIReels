@@ -24,7 +24,25 @@ def fetch_search_trends() -> list:
         except Exception as e:
             print(f"[Trend Engine] Search failed for '{q}': {e}")
             
-    return raw_results
+    extracted_value = deduplicate_results(raw_results)
+    return extracted_value
+
+def deduplicate_results(results: list) -> list:
+    seen = set()
+    unique = []
+
+    for r in results:
+        title = (r.get("title") or "").strip().lower()
+        url = (r.get("url") or "").strip().lower()
+        key = (title, url)
+
+        if key in seen:
+            continue
+
+        seen.add(key)
+        unique.append(r)
+
+    return unique
 
 def synthesize_topics(raw_results: list) -> list:
     """Uses Qwen Max to group noise into clear, actionable topics."""
