@@ -42,7 +42,7 @@ def run_reels_pipeline(execute_content: bool = True):
     print(f"[Pipeline] Discovered {len(candidate_topics)} potential topic(s):")
     for t in candidate_topics:
         print(f" - {t}")
-    '''    
+     
     # 2. Decision Engine: Filter & LLM Score via DeepSeek
     print("\n>>> STEP 2: DECISION ENGINE (FILTERING & SCORING)")
     winning_topic_data = run_decision_engine(candidate_topics)
@@ -91,7 +91,7 @@ def run_reels_pipeline(execute_content: bool = True):
     except Exception as e:
         print(f"\n[Pipeline] Fatal error during content generation: {e}")
         update_topic_status(topic, "failed")
-    '''
+
 
 if __name__ == "__main__":
     # execute_content determines if the full pipeline runs. If false it only searches and decides
