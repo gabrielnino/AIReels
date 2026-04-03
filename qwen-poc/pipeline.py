@@ -1,118 +1,109 @@
+import time
 from engine.memory_engine import init_db, save_topic, update_topic_status
 from engine.trend_engine import run_trend_engine
 from engine.decision_engine import run_decision_engine
 from engine.strategy_engine import run_strategy_engine
 from engine.content_engine import run_content_engine
-import time
-import sys
-import os
+from utils.logger import get_logger
 
-class LoggerWriter:
-    def __init__(self, filepath):
-        self.terminal = sys.stdout
-        os.makedirs(os.path.dirname(filepath), exist_ok=True)
-        self.log = open(filepath, "a", encoding="utf-8")
-        self.log.write(f"\n\n--- NEW RUN: {time.strftime('%Y-%m-%d %H:%M:%S')} ---\n")
-        
-    def write(self, message):
-        self.terminal.write(message)
-        self.log.write(message)
-        self.log.flush()
-        
-    def flush(self):
-        self.terminal.flush()
-        self.log.flush()
+log = get_logger(__name__)
 
-sys.stdout = LoggerWriter("logs/pipeline.log")
+
 def run_reels_pipeline(execute_content: bool = True):
-    print("====================================")
-    print("🚀 STARTED REELS AUTOMATION PIPELINE")
-    print("====================================")
-    
+    log.info("=" * 44)
+    log.info("🚀 STARTED REELS AUTOMATION PIPELINE")
+    log.info("=" * 44)
+
     # 0. Initialize Memory DB
     init_db()
-    
+
     # 1. Trend Engine: Extract candidates
-    print("\n>>> STEP 1: DETECTING TRENDS")
+    log.step("run_reels_pipeline", "INFO", step="1/4 - Detecting trends")
     candidate_topics = run_trend_engine()
-    
+
     if not candidate_topics:
-        print("[Pipeline] No valid topics generated. Exiting.")
+        log.step("run_reels_pipeline", "OUT", result="exit", reason="No valid topics generated")
         return
-        
-    print(f"[Pipeline] Discovered {len(candidate_topics)} potential topic(s):")
-    for t in candidate_topics:
-        print(f" - {t}")
-     
+
+    log.step("run_reels_pipeline", "INFO",
+             message=f"Discovered {len(candidate_topics)} potential topic(s)",
+             topics=candidate_topics)
+
     # 2. Decision Engine: Filter & LLM Score via DeepSeek
-    print("\n>>> STEP 2: DECISION ENGINE (FILTERING & SCORING)")
+    log.step("run_reels_pipeline", "INFO", step="2/4 - Decision engine (filtering & scoring)")
     winning_topic_data = run_decision_engine(candidate_topics)
-    
+
     if not winning_topic_data:
-        print("[Pipeline] No topics survived the filters and memory check. Exiting.")
+        log.step("run_reels_pipeline", "OUT", result="exit",
+                 reason="No topics survived filters and memory check")
         return
-        
+
     topic = winning_topic_data.get("topic")
     score = winning_topic_data.get("final_score")
     reason = winning_topic_data.get("reason")
-    
-    print(f"\n[Pipeline] 🏆 WINNING TOPIC SELECTED: '{topic}'")
-    print(f"[Pipeline] Score: {score}/10")
-    print(f"[Pipeline] Rationale: {reason}")
-    
+
+    log.step("run_reels_pipeline", "INFO",
+             message="🏆 Winning topic selected",
+             topic=topic,
+             score=score,
+             reason=reason)
+
     # 3. Store Memory Context
-    # Add winning topic to database to prevent immediate reuse
     topic_id = save_topic(topic, status="selected", score=score)
     if topic_id:
-        print(f"[Pipeline] Saved to memory (ID: {topic_id})")
+        log.step("run_reels_pipeline", "INFO", message="Saved to memory", topic_id=topic_id)
 
     # 4. Strategy Engine: Define narrative, hook, caption, hashtags, CTA, motion prompt
-    print("\n>>> STEP 3: STRATEGY ENGINE (CONTENT STRATEGY)")
+    log.step("run_reels_pipeline", "INFO", step="3/4 - Strategy engine (content strategy)")
     strategy = run_strategy_engine(topic, score=score, reason=reason)
 
-    print(f"\n[Pipeline] 📋 CONTENT STRATEGY READY:")
-    print(f"  Narrative:     {strategy.get('narrative')}")
-    print(f"  Hook:          {strategy.get('hook')}")
-    print(f"  Emotion:       {strategy.get('emotion')}")
-    print(f"  Motion Prompt: {strategy.get('motion_prompt')}")
-    print(f"  CTA:           {strategy.get('cta')}")
-    print(f"  On-screen:     {strategy.get('on_screen_text')}")
+    log.step("run_reels_pipeline", "INFO",
+             message="📋 Content strategy ready",
+             narrative=strategy.get("narrative"),
+             hook=strategy.get("hook"),
+             emotion=strategy.get("emotion"),
+             motion_prompt=strategy.get("motion_prompt"),
+             cta=strategy.get("cta"),
+             on_screen_text=strategy.get("on_screen_text"))
 
     if not execute_content:
-        print("\n[Pipeline] Execution completed (run_content disabled in param).")
+        log.step("run_reels_pipeline", "OUT",
+                 result="exit", reason="execute_content=False — stopping before asset generation")
         return
 
     # 5. Content Engine: Generation
-    print("\n>>> STEP 4: CONTENT ENGINE (GENERATING ASSETS)")
+    log.step("run_reels_pipeline", "INFO", step="4/4 - Content engine (generating assets)")
     try:
         start_time = time.time()
         final_assets = run_content_engine(topic, strategy=strategy)
+        elapsed = int(time.time() - start_time)
 
-        # Output artifacts
-        print("\n====================================")
-        print("🎉 REELS GENERATION COMPLETE!")
-        print(f"Time Taken:      {int(time.time() - start_time)} seconds")
-        print(f"Theme:           {final_assets['topic']}")
-        print(f"Emotion:         {final_assets['emotion']}")
-        print(f"Image Prompt:    {final_assets['base_prompt']}")
-        print(f"Base Image URL:  {final_assets['image_url']}")
-        print(f"Video Path:      {final_assets['final_video_path']}")
-        print(f"CTA:             {final_assets['cta']}")
-        print(f"On-screen Text:  {final_assets['on_screen_text']}")
-        print(f"\n📝 CAPTION READY TO PUBLISH:")
-        print(f"{final_assets['caption']}")
-        print(f"\n🏷️  HASHTAGS:")
-        print(" ".join(final_assets.get('hashtags', [])))
-        print("====================================")
+        log.info("=" * 44)
+        log.info("🎉 REELS GENERATION COMPLETE!")
+        log.step("run_reels_pipeline", "OUT",
+                 time_taken_s=elapsed,
+                 topic=final_assets["topic"],
+                 emotion=final_assets["emotion"],
+                 image_prompt=final_assets["base_prompt"],
+                 image_url=final_assets["image_url"],
+                 video_path=final_assets["final_video_path"],
+                 cta=final_assets["cta"],
+                 on_screen_text=final_assets["on_screen_text"],
+                 caption_preview=str(final_assets.get("caption", ""))[:120],
+                 hashtags=final_assets.get("hashtags", []))
+        log.info("=" * 44)
 
         # 6. Finalize DB entry
         update_topic_status(topic, "published")
 
     except Exception as e:
-        print(f"\n[Pipeline] Fatal error during content generation: {e}")
+        log.step("run_reels_pipeline", "ERR",
+                 step="4/4 - Content engine", error=str(e))
         update_topic_status(topic, "failed")
+        raise
 
 
 if __name__ == "__main__":
-    # execute_content determines if the full pipeline runs. If false it only searches and decides
+    # execute_content determines if the full pipeline runs.
+    # If False it only searches, decides, and builds the strategy.
     run_reels_pipeline(execute_content=True)
