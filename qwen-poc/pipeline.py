@@ -1,6 +1,7 @@
 from engine.memory_engine import init_db, save_topic, update_topic_status
 from engine.trend_engine import run_trend_engine
 from engine.decision_engine import run_decision_engine
+from engine.strategy_engine import run_strategy_engine
 from engine.content_engine import run_content_engine
 import time
 import sys
@@ -64,30 +65,49 @@ def run_reels_pipeline(execute_content: bool = True):
     topic_id = save_topic(topic, status="selected", score=score)
     if topic_id:
         print(f"[Pipeline] Saved to memory (ID: {topic_id})")
-        
+
+    # 4. Strategy Engine: Define narrative, hook, caption, hashtags, CTA, motion prompt
+    print("\n>>> STEP 3: STRATEGY ENGINE (CONTENT STRATEGY)")
+    strategy = run_strategy_engine(topic, score=score, reason=reason)
+
+    print(f"\n[Pipeline] 📋 CONTENT STRATEGY READY:")
+    print(f"  Narrative:     {strategy.get('narrative')}")
+    print(f"  Hook:          {strategy.get('hook')}")
+    print(f"  Emotion:       {strategy.get('emotion')}")
+    print(f"  Motion Prompt: {strategy.get('motion_prompt')}")
+    print(f"  CTA:           {strategy.get('cta')}")
+    print(f"  On-screen:     {strategy.get('on_screen_text')}")
+
     if not execute_content:
         print("\n[Pipeline] Execution completed (run_content disabled in param).")
         return
-        
-    # 4. Content Engine: Generation
-    print("\n>>> STEP 3: CONTENT ENGINE (GENERATING ASSETS)")
+
+    # 5. Content Engine: Generation
+    print("\n>>> STEP 4: CONTENT ENGINE (GENERATING ASSETS)")
     try:
         start_time = time.time()
-        final_assets = run_content_engine(topic)
-        
+        final_assets = run_content_engine(topic, strategy=strategy)
+
         # Output artifacts
         print("\n====================================")
         print("🎉 REELS GENERATION COMPLETE!")
-        print(f"Time Taken: {int(time.time() - start_time)} seconds")
-        print(f"Theme: {final_assets['topic']}")
-        print(f"Image Prompt Used: {final_assets['base_prompt']}")
-        print(f"Base Image URL: {final_assets['image_url']}")
-        print(f"Final Reel Video Path: {final_assets['final_video_path']}")
+        print(f"Time Taken:      {int(time.time() - start_time)} seconds")
+        print(f"Theme:           {final_assets['topic']}")
+        print(f"Emotion:         {final_assets['emotion']}")
+        print(f"Image Prompt:    {final_assets['base_prompt']}")
+        print(f"Base Image URL:  {final_assets['image_url']}")
+        print(f"Video Path:      {final_assets['final_video_path']}")
+        print(f"CTA:             {final_assets['cta']}")
+        print(f"On-screen Text:  {final_assets['on_screen_text']}")
+        print(f"\n📝 CAPTION READY TO PUBLISH:")
+        print(f"{final_assets['caption']}")
+        print(f"\n🏷️  HASHTAGS:")
+        print(" ".join(final_assets.get('hashtags', [])))
         print("====================================")
-        
-        # 5. Finalize DB entry (simulated schedule publishing state)
+
+        # 6. Finalize DB entry
         update_topic_status(topic, "published")
-        
+
     except Exception as e:
         print(f"\n[Pipeline] Fatal error during content generation: {e}")
         update_topic_status(topic, "failed")

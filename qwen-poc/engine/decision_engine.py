@@ -32,7 +32,7 @@ def evaluate_topic(topic: str) -> dict:
     print(f"[Decision Engine] Evaluating topic: '{topic}'")
     
     try:
-        response = generate_text(prompt, model="qwen-max", system_prompt=system_prompt)
+        response = generate_text(prompt, model="deepseek-chat", system_prompt=system_prompt)
         
         clean_json = response.strip()
         if clean_json.startswith("```json"):

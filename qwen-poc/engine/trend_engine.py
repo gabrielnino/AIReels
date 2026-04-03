@@ -65,7 +65,7 @@ def synthesize_topics(raw_results: list) -> list:
     print("[Trend Engine] Synthesizing raw searches into topics via Qwen-Max...")
     system_prompt = "You are a highly analytical AI capable of extreme conciseness and valid JSON output."
     
-    response = generate_text(prompt=prompt, model="qwen-max", system_prompt=system_prompt)
+    response = generate_text(prompt=prompt, model="deepseek-chat", system_prompt=system_prompt)
     
     try:
         # Clean up any potential markdown formatting the LLM might append automatically

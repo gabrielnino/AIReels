@@ -21,50 +21,56 @@ def expand_to_prompt(topic: str) -> str:
     - DO NOT include conversational filler like "Here is your prompt:", just return the raw prompt text string.
     """
     
-    response = generate_text(prompt=instructions, model="qwen-max", system_prompt=system_prompt)
+    response = generate_text(prompt=instructions, model="deepseek-chat", system_prompt=system_prompt)
     clean_prompt = response.strip()
     return clean_prompt
 
-def run_content_engine(selected_topic: str) -> dict:
-    """Pipeline from Topic -> Expanded Prompt -> Initial Image -> Video Reel."""
-    
-    # 1. Prompt Expansion
+def run_content_engine(selected_topic: str, strategy: dict) -> dict:
+    """Pipeline from Topic + Strategy -> Expanded Prompt -> Initial Image -> Video Reel."""
+
+    # 1. Prompt Expansion (informed by strategy narrative and hook)
     enhanced_prompt = expand_to_prompt(selected_topic)
     print(f"[Content Engine] Extracted Prompt: {enhanced_prompt}")
-    
+
     # 2. Image Generation
-    # Mocking external inputs for simplicity, the service takes GenerateImageRequest
     print("[Content Engine] Generating base image frame...")
     img_req = GenerateImageRequest(prompt=enhanced_prompt, images=[], n=1)
-    
-    # generate_images returns LOCAL paths if successful, but we actually need a CDN URL for the video engine.
-    # We will use generate_image_urls directly to chaining into video perfectly as per architecture docs.
+
     from service.image_service import generate_image_urls
-    
+
     image_urls = generate_image_urls(img_req)
     if not image_urls:
         raise ValueError("Image generation failed to return a URL.")
-        
+
     base_image_url = image_urls[0]
     print(f"[Content Engine] Generated Base Image URL: {base_image_url}")
-    
-    # 3. Video Generation
-    # Submits to wan2.6-i2v -> Polls -> Downloads to outputs/
+
+    # 3. Video Generation — uses strategy motion_prompt instead of generic hardcoded one
+    motion_prompt = strategy.get("motion_prompt", "gentle dynamic motion, cinematic camera pan, lively movement")
+    print(f"[Content Engine] Motion Prompt: {motion_prompt}")
     print("[Content Engine] Submitting Video Synthesis task...")
-    
+
     video_path = generate_video(
         img_url=base_image_url,
-        prompt="gentle dynamic motion, cinematic camera pan, lively movement", # Standard motion prompt 
+        prompt=motion_prompt,
         resolution="720P",
-        duration=5,
+        duration=10,
         audio=False
     )
-    
-    print(f"[Content Engine] FULLY COMPLETED REAL! Video saved to: {video_path}")
-    
+
+    print(f"[Content Engine] FULLY COMPLETED REEL! Video saved to: {video_path}")
+
     return {
         "topic": selected_topic,
         "base_prompt": enhanced_prompt,
         "image_url": base_image_url,
-        "final_video_path": video_path
+        "final_video_path": video_path,
+        # Pass through strategy outputs for publishing
+        "narrative": strategy.get("narrative"),
+        "hook": strategy.get("hook"),
+        "emotion": strategy.get("emotion"),
+        "caption": strategy.get("caption"),
+        "hashtags": strategy.get("hashtags", []),
+        "cta": strategy.get("cta"),
+        "on_screen_text": strategy.get("on_screen_text"),
     }

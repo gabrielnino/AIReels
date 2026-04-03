@@ -1,95 +1,130 @@
 import os
-import dashscope
+import time
 import logging
-from dashscope import MultiModalConversation
-from utils.file_utils import to_file_uri, download_image
-from models.request_models import GenerateImageRequest
-from typing import List, Tuple
-
-# Load environment variables
+import requests
+from typing import List
 from dotenv import load_dotenv
+from utils.file_utils import download_image
+from models.request_models import GenerateImageRequest
+
 load_dotenv()
 
-# Use the international DashScope endpoint
-dashscope.base_http_api_url = 'https://dashscope-intl.aliyuncs.com/api/v1'
+FAL_API_BASE = "https://queue.fal.run"
+FAL_IMAGE_MODEL = "fal-ai/flux/dev"  # Flux Dev — high quality text-to-image ~$0.025/image
 
 
-def _is_url(path: str) -> bool:
-    """Returns True if the path is an HTTP/HTTPS URL."""
-    return path.startswith("http://") or path.startswith("https://")
+def _get_api_key() -> str:
+    key = os.environ.get("FAL_API_KEY")
+    if not key:
+        raise ValueError("FAL_API_KEY not found in environment variables.")
+    return key
 
 
-def _build_messages(request_data: GenerateImageRequest) -> list:
-    """Builds the messages payload for the DashScope multimodal API."""
-    messages_content = []
-    for img in request_data.images:
-        if _is_url(img):
-            messages_content.append({"image": img})
-        else:
-            messages_content.append({"image": to_file_uri(img)})
-    messages_content.append({"text": request_data.prompt})
-    return [{"role": "user", "content": messages_content}]
+def _get_headers() -> dict:
+    return {
+        "Authorization": f"Key {_get_api_key()}",
+        "Content-Type": "application/json",
+    }
 
 
-def _call_api(request_data: GenerateImageRequest):
-    """Calls the DashScope multimodal API and returns the raw response."""
-    api_key = os.environ.get("DASHSCOPE_API_KEY")
-    if not api_key:
-        raise ValueError("DASHSCOPE_API_KEY not found in environment variables.")
-    return MultiModalConversation.call(
-        api_key=api_key,
-        model='qwen-image-2.0-pro',
-        messages=_build_messages(request_data),
-        result_format='message',
-        stream=False,
-        n=request_data.n,
-        negative_prompt=request_data.negative_prompt or "",
-        watermark=True,
-        **(({"seed": request_data.seed} if request_data.seed is not None else {})),
-    )
-
-
-def _extract_image_urls(response) -> List[str]:
-    """Parses the API response and returns a list of CDN image URLs."""
-    urls = []
+def _submit_image_task(prompt: str, n: int = 1, size: str = "1024*1024") -> dict:
+    """
+    Submits an async text-to-image task to fal.ai (Flux Dev).
+    Returns dict with request_id, status_url and response_url.
+    """
+    # Parse size format "1024*1024" → width/height
     try:
-        choice = response.output.choices[0]
-        if hasattr(choice, 'message') and hasattr(choice.message, 'content'):
-            for item in choice.message.content:
-                if isinstance(item, dict) and 'image' in item:
-                    urls.append(item['image'])
-    except AttributeError:
-        output_choices = response.output.get('choices', [])
-        if output_choices:
-            content = output_choices[0].get('message', {}).get('content', [])
-            for item in content:
-                if isinstance(item, dict) and 'image' in item:
-                    urls.append(item['image'])
-    return urls
+        width, height = [int(x) for x in size.replace("x", "*").split("*")]
+    except Exception:
+        width, height = 1024, 1024
+
+    payload = {
+        "prompt": prompt,
+        "num_images": n,
+        "image_size": {"width": width, "height": height},
+        "num_inference_steps": 28,
+        "guidance_scale": 3.5,
+        "enable_safety_checker": True,
+    }
+
+    response = requests.post(
+        f"{FAL_API_BASE}/{FAL_IMAGE_MODEL}",
+        headers=_get_headers(),
+        json=payload,
+        timeout=30,
+    )
+    response.raise_for_status()
+    data = response.json()
+
+    request_id = data.get("request_id")
+    if not request_id:
+        raise RuntimeError(f"[image] No request_id in fal.ai response: {data}")
+
+    print(f"[image] Task submitted to fal.ai. Request ID: {request_id}")
+    logging.info(f"[image_service._submit_image_task] request_id: {request_id}")
+    return {
+        "request_id": request_id,
+        "status_url": data.get("status_url"),
+        "response_url": data.get("response_url"),
+    }
+
+
+def _poll_image_task(task: dict, timeout: int = 120, interval: int = 5) -> List[str]:
+    """
+    Polls fal.ai until COMPLETED and returns list of image CDN URLs.
+    """
+    status_url = task["status_url"]
+    response_url = task["response_url"]
+
+    start = time.time()
+    while time.time() - start < timeout:
+        resp = requests.get(status_url, headers=_get_headers(), timeout=30)
+        resp.raise_for_status()
+        data = resp.json()
+        status = data.get("status", "UNKNOWN")
+        elapsed = int(time.time() - start)
+        print(f"[image] Task status: {status} ({elapsed}s elapsed)")
+
+        if status == "COMPLETED":
+            result_resp = requests.get(response_url, headers=_get_headers(), timeout=30)
+            result_resp.raise_for_status()
+            result_data = result_resp.json()
+            images = result_data.get("images", [])
+            urls = [img.get("url") for img in images if img.get("url")]
+            logging.info(f"[image_service._poll_image_task] image URLs: {urls}")
+            return urls
+
+        elif status in ("FAILED", "CANCELLED"):
+            raise RuntimeError(f"[image] fal.ai task {status}: {data.get('error', 'No details')}")
+
+        time.sleep(interval)
+
+    raise TimeoutError(f"[image] Task timed out after {timeout}s.")
 
 
 def generate_image_urls(request_data: GenerateImageRequest) -> List[str]:
     """
-    Generates images and returns their raw CDN URLs (without downloading).
-    Useful for chaining directly into video generation.
+    Generates images via fal.ai Flux Dev and returns CDN URLs (no download).
+    Used for chaining directly into video generation.
     """
-    logging.info(f"[image_service.generate_image_urls] input values - request_data: {request_data.model_dump() if hasattr(request_data, 'model_dump') else request_data}")
-    response = _call_api(request_data)
-    if response.status_code == 200:
-        urls = _extract_image_urls(response)
-        print(f"[image] Generated {len(urls)} image URL(s)")
-        logging.info(f"[image_service.generate_image_urls] output values: {urls}")
-        return urls
-    else:
-        raise RuntimeError(f"DashScope API Error {response.status_code}: {response.message}")
+    logging.info(f"[image_service.generate_image_urls] prompt: {request_data.prompt[:80]}")
+    task = _submit_image_task(
+        prompt=request_data.prompt,
+        n=request_data.n or 1,
+        size=request_data.size or "1024*1024",
+    )
+    urls = _poll_image_task(task)
+    print(f"[image] Generated {len(urls)} image URL(s)")
+    logging.info(f"[image_service.generate_image_urls] output: {urls}")
+    return urls
 
 
 def generate_images(request_data: GenerateImageRequest) -> List[str]:
     """
-    Generates images, downloads them to outputs/, and returns local file paths.
-    Uses the international endpoint (dashscope-intl.aliyuncs.com).
+    Generates images via fal.ai Flux Dev, downloads them to outputs/,
+    and returns local file paths.
     """
-    logging.info(f"[image_service.generate_images] input values - request_data: {request_data.model_dump() if hasattr(request_data, 'model_dump') else request_data}")
+    logging.info(f"[image_service.generate_images] prompt: {request_data.prompt[:80]}")
     try:
         urls = generate_image_urls(request_data)
         output_paths = []
@@ -97,8 +132,8 @@ def generate_images(request_data: GenerateImageRequest) -> List[str]:
             local_file = download_image(url)
             if local_file:
                 output_paths.append(local_file)
-        logging.info(f"[image_service.generate_images] output values: {output_paths}")
+        logging.info(f"[image_service.generate_images] output: {output_paths}")
         return output_paths
     except Exception as e:
-        print(f"Exception during DashScope image generation: {e}")
-        raise e
+        print(f"[image] Exception during fal.ai image generation: {e}")
+        raise

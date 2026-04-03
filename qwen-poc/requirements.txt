@@ -5,3 +5,4 @@ pydantic
 requests
 python-dotenv
 openai
+fal-client
