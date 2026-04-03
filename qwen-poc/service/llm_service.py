@@ -9,14 +9,10 @@ log = get_logger(__name__)
 
 def get_llm_client() -> OpenAI:
     """Initializes and returns an OpenAI-compatible client for DeepSeek."""
-    log.step("get_llm_client", "IN")
     api_key = os.environ.get("DEEPSEEK_API_KEY")
     if not api_key:
-        log.step("get_llm_client", "ERR", error="DEEPSEEK_API_KEY not found")
         raise ValueError("DEEPSEEK_API_KEY not found in environment variables.")
-    client = OpenAI(api_key=api_key, base_url="https://api.deepseek.com")
-    log.step("get_llm_client", "OUT", base_url="https://api.deepseek.com")
-    return client
+    return OpenAI(api_key=api_key, base_url="https://api.deepseek.com")
 
 
 def generate_text(prompt: str, model: str = "deepseek-chat", system_prompt: str = None) -> str:

@@ -16,7 +16,7 @@ def generate(request: GenerateImageRequest, http_request: Request):
     log.step("POST /generate", "IN",
              prompt_preview=request.prompt[:80],
              n=request.n,
-             size=getattr(request, "size", None),
+             size=request.size,
              client=http_request.client.host if http_request.client else "unknown")
     try:
         output_images = generate_images(request)

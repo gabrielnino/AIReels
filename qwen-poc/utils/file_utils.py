@@ -2,22 +2,21 @@ import os
 import requests
 import uuid
 from utils.logger import get_logger
+from utils.run_context import get_run_dir
 
 log = get_logger(__name__)
 
-OUTPUT_DIR = "outputs"
-os.makedirs(OUTPUT_DIR, exist_ok=True)
-
 
 def download_image(url: str, suffix: str = ".png") -> str:
-    """Downloads an image from a URL and saves it to the local outputs directory."""
+    """Downloads an image from a URL and saves it to the current run directory."""
     log.step("download_image", "IN", url=url, suffix=suffix)
     try:
         response = requests.get(url, stream=True)
         response.raise_for_status()
 
+        output_dir = get_run_dir()
         filename = f"{uuid.uuid4()}{suffix}"
-        filepath = os.path.join(OUTPUT_DIR, filename)
+        filepath = os.path.join(output_dir, filename)
 
         with open(filepath, "wb") as f:
             for chunk in response.iter_content(chunk_size=8192):
@@ -33,10 +32,7 @@ def download_image(url: str, suffix: str = ".png") -> str:
 
 def to_file_uri(local_path: str) -> str:
     """Converts a local file path to a file:// URI."""
-    log.step("to_file_uri", "IN", local_path=local_path)
     abs_path = os.path.abspath(local_path)
     # DashScope SDK uses urlparse. On Windows, file://F:/path parses F: as netloc,
     # which avoids the leading slash issue.
-    uri = f"file://{abs_path.replace(chr(92), '/')}"
-    log.step("to_file_uri", "OUT", uri=uri)
-    return uri
+    return f"file://{abs_path.replace(chr(92), '/')}"

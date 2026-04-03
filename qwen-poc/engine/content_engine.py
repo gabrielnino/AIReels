@@ -1,4 +1,5 @@
 from service.llm_service import generate_text
+from service.image_service import generate_image_urls
 from service.video_service import generate_video
 from models.request_models import GenerateImageRequest
 from utils.logger import get_logger
@@ -42,7 +43,6 @@ def run_content_engine(selected_topic: str, strategy: dict) -> dict:
 
     # 2. Image Generation via fal.ai Flux Dev
     log.step("run_content_engine", "INFO", step="2/3 - Generating base image", prompt=enhanced_prompt)
-    from service.image_service import generate_image_urls
     img_req = GenerateImageRequest(prompt=enhanced_prompt, images=[], n=1)
     image_urls = generate_image_urls(img_req)
 

@@ -1,4 +1,5 @@
 import time
+from utils.run_context import init_run
 from engine.memory_engine import init_db, save_topic, update_topic_status
 from engine.trend_engine import run_trend_engine
 from engine.decision_engine import run_decision_engine
@@ -10,14 +11,14 @@ log = get_logger(__name__)
 
 
 def run_reels_pipeline(execute_content: bool = True):
+    run_dir = init_run()
     log.info("=" * 44)
     log.info("🚀 STARTED REELS AUTOMATION PIPELINE")
+    log.info(f"📁 Run output folder: {run_dir}")
     log.info("=" * 44)
 
-    # 0. Initialize Memory DB
     init_db()
 
-    # 1. Trend Engine: Extract candidates
     log.step("run_reels_pipeline", "INFO", step="1/4 - Detecting trends")
     candidate_topics = run_trend_engine()
 
@@ -29,7 +30,6 @@ def run_reels_pipeline(execute_content: bool = True):
              message=f"Discovered {len(candidate_topics)} potential topic(s)",
              topics=candidate_topics)
 
-    # 2. Decision Engine: Filter & LLM Score via DeepSeek
     log.step("run_reels_pipeline", "INFO", step="2/4 - Decision engine (filtering & scoring)")
     winning_topic_data = run_decision_engine(candidate_topics)
 
@@ -48,12 +48,10 @@ def run_reels_pipeline(execute_content: bool = True):
              score=score,
              reason=reason)
 
-    # 3. Store Memory Context
     topic_id = save_topic(topic, status="selected", score=score)
     if topic_id:
         log.step("run_reels_pipeline", "INFO", message="Saved to memory", topic_id=topic_id)
 
-    # 4. Strategy Engine: Define narrative, hook, caption, hashtags, CTA, motion prompt
     log.step("run_reels_pipeline", "INFO", step="3/4 - Strategy engine (content strategy)")
     strategy = run_strategy_engine(topic, score=score, reason=reason)
 
@@ -71,7 +69,6 @@ def run_reels_pipeline(execute_content: bool = True):
                  result="exit", reason="execute_content=False — stopping before asset generation")
         return
 
-    # 5. Content Engine: Generation
     log.step("run_reels_pipeline", "INFO", step="4/4 - Content engine (generating assets)")
     try:
         start_time = time.time()
@@ -93,7 +90,6 @@ def run_reels_pipeline(execute_content: bool = True):
                  hashtags=final_assets.get("hashtags", []))
         log.info("=" * 44)
 
-        # 6. Finalize DB entry
         update_topic_status(topic, "published")
 
     except Exception as e:
@@ -104,6 +100,4 @@ def run_reels_pipeline(execute_content: bool = True):
 
 
 if __name__ == "__main__":
-    # execute_content determines if the full pipeline runs.
-    # If False it only searches, decides, and builds the strategy.
     run_reels_pipeline(execute_content=True)

@@ -62,9 +62,10 @@ def _poll_image_task(task: dict, timeout: int = 120, interval: int = 5) -> List[
 
     log.step("_poll_image_task", "IN", request_id=request_id)
 
+    headers = get_fal_headers()
     start = time.time()
     while time.time() - start < timeout:
-        resp = requests.get(status_url, headers=get_fal_headers(), timeout=30)
+        resp = requests.get(status_url, headers=headers, timeout=30)
         resp.raise_for_status()
         data = resp.json()
         status = data.get("status", "UNKNOWN")
@@ -72,7 +73,7 @@ def _poll_image_task(task: dict, timeout: int = 120, interval: int = 5) -> List[
         log.step("_poll_image_task", "INFO", request_id=request_id, status=status, elapsed_s=elapsed)
 
         if status == "COMPLETED":
-            result_resp = requests.get(response_url, headers=get_fal_headers(), timeout=30)
+            result_resp = requests.get(response_url, headers=headers, timeout=30)
             result_resp.raise_for_status()
             result_data = result_resp.json()
             urls = [img.get("url") for img in result_data.get("images", []) if img.get("url")]

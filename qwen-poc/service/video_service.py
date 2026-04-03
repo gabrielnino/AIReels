@@ -63,9 +63,10 @@ def poll_video_task(task: dict, timeout: int = 600, interval: int = 10) -> str:
 
     log.step("poll_video_task", "IN", request_id=request_id)
 
+    headers = get_fal_headers()
     start = time.time()
     while time.time() - start < timeout:
-        response = requests.get(status_url, headers=get_fal_headers(), timeout=30)
+        response = requests.get(status_url, headers=headers, timeout=30)
         response.raise_for_status()
         data = response.json()
         status = data.get("status", "UNKNOWN")
@@ -73,7 +74,7 @@ def poll_video_task(task: dict, timeout: int = 600, interval: int = 10) -> str:
         log.step("poll_video_task", "INFO", request_id=request_id, status=status, elapsed_s=elapsed)
 
         if status == "COMPLETED":
-            result_resp = requests.get(response_url, headers=get_fal_headers(), timeout=30)
+            result_resp = requests.get(response_url, headers=headers, timeout=30)
             result_resp.raise_for_status()
             result_data = result_resp.json()
             video_url = (
@@ -100,10 +101,11 @@ def poll_video_task(task: dict, timeout: int = 600, interval: int = 10) -> str:
 
 
 def download_video(video_url: str) -> str:
-    """Downloads the video from CDN and saves it to outputs/."""
+    """Downloads the video from CDN and saves it to the current run directory."""
+    from utils.run_context import get_run_dir
     log.step("download_video", "IN", video_url=video_url)
-    os.makedirs("outputs", exist_ok=True)
-    filename = f"outputs/{uuid.uuid4()}.mp4"
+    run_dir = get_run_dir()
+    filename = os.path.join(run_dir, f"{uuid.uuid4()}.mp4")
 
     r = requests.get(video_url, stream=True, timeout=120)
     r.raise_for_status()

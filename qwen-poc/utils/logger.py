@@ -3,10 +3,39 @@ import os
 import sys
 from datetime import datetime
 
-LOG_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "logs")
-os.makedirs(LOG_DIR, exist_ok=True)
+# _file_handler is shared across all loggers in the same process so every
+# module writes to the *same* run log file.
+_file_handler: logging.FileHandler | None = None
 
-LOG_FILE = os.path.join(LOG_DIR, "pipeline.log")
+
+def _get_file_handler() -> logging.FileHandler:
+    """
+    Returns (and lazily creates) the single shared FileHandler for this run.
+    The log file is placed inside the timestamped run directory managed by
+    `utils.run_context`.  If the run directory is not initialised yet, the
+    handler falls back to `outputs/pipeline.log` so early bootstrap logs are
+    never lost.
+    """
+    global _file_handler
+    if _file_handler is not None:
+        return _file_handler
+
+    try:
+        from utils.run_context import get_run_dir
+        log_dir = get_run_dir()
+    except RuntimeError:
+        # run_context not initialised yet — use a safe fallback
+        log_dir = "outputs"
+        os.makedirs(log_dir, exist_ok=True)
+
+    log_path = os.path.join(log_dir, "pipeline.log")
+    _file_handler = logging.FileHandler(log_path, encoding="utf-8")
+    _file_handler.setLevel(logging.DEBUG)
+    _file_handler.setFormatter(logging.Formatter(
+        "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S"
+    ))
+    return _file_handler
 
 
 def get_logger(name: str) -> logging.Logger:
@@ -34,13 +63,7 @@ def get_logger(name: str) -> logging.Logger:
     logger.addHandler(console)
 
     # ── File handler: DEBUG and above (full detail) ───────────────────────────
-    file_handler = logging.FileHandler(LOG_FILE, encoding="utf-8")
-    file_handler.setLevel(logging.DEBUG)
-    file_handler.setFormatter(logging.Formatter(
-        "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S"
-    ))
-    logger.addHandler(file_handler)
+    logger.addHandler(_get_file_handler())
     logger.propagate = False
 
     # Attach .step() helper directly to the logger instance
