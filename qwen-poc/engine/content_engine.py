@@ -118,76 +118,100 @@ def build_audio_prompt(topic: str, strategy: dict) -> str:
 def run_content_engine(selected_topic: str, strategy: dict) -> dict:
     """
     Full pipeline:
-      1. Expand topic → image_prompt + style_anchor
+      1. Expand topic → image prompt + style anchor
       2. Generate base image (Flux Dev)
-      3. Generate silent video (Wan i2v) — motion coherent with image style
-      4. Generate concert audio (stable-audio) + mux onto video
-      5. Burn subtitles (hook / on_screen_text / cta) onto final video
+      3. Generate silent video (Wan i2v) — 15s, motion coherent
+      4. Generate background music (stable-audio)
+      5. Generate voiceover (Kokoro TTS) with audio CTA
+      6. Mix voice + music → mux onto video
+      7. Burn word-by-word subtitles (Alex Hormozi style)
+      8. Append end-card (visual CTA)
     """
     from utils.run_context import get_run_dir
+
+    VIDEO_DURATION = 15  # 15s optimised for retention + algorithm push
 
     log.step("run_content_engine", "IN",
              topic=selected_topic,
              motion_prompt=strategy.get("motion_prompt"),
-             emotion=strategy.get("emotion"))
+             emotion=strategy.get("emotion"),
+             video_duration=VIDEO_DURATION)
 
     # ── 1. Visual prompt expansion ────────────────────────────────────────────
-    log.step("run_content_engine", "INFO", step="1/5 - Expanding topic → image prompt + style anchor")
+    log.step("run_content_engine", "INFO",
+             step="1/8 - Expanding topic → image prompt + style anchor")
     prompts = expand_to_prompt(selected_topic, strategy)
     image_prompt = prompts["image_prompt"]
     style_anchor = prompts["style_anchor"]
 
     # ── 2. Image generation ───────────────────────────────────────────────────
-    log.step("run_content_engine", "INFO", step="2/5 - Generating base image", prompt=image_prompt)
+    log.step("run_content_engine", "INFO",
+             step="2/8 - Generating base image", prompt=image_prompt)
     img_req = GenerateImageRequest(prompt=image_prompt, images=[], n=1)
     image_urls = generate_image_urls(img_req)
 
     if not image_urls:
-        log.step("run_content_engine", "ERR", step="2/5", error="Image generation returned no URLs")
+        log.step("run_content_engine", "ERR", step="2/8",
+                 error="Image generation returned no URLs")
         raise ValueError("Image generation failed to return a URL.")
 
     base_image_url = image_urls[0]
-    log.step("run_content_engine", "INFO", step="2/5 - Image ready", image_url=base_image_url)
+    log.step("run_content_engine", "INFO", step="2/8 - Image ready",
+             image_url=base_image_url)
 
-    # ── 3. Silent video — coherent with image style ───────────────────────────
+    # ── 3. Silent video — style-coherent, 15s ────────────────────────────────
     motion_prompt = build_coherent_motion_prompt(strategy, style_anchor)
     log.step("run_content_engine", "INFO",
-             step="3/5 - Generating silent video (style-coherent)",
+             step="3/8 - Generating silent video (15s, style-coherent)",
              motion_prompt=motion_prompt)
 
     silent_video_path = generate_video(
         img_url=base_image_url,
         prompt=motion_prompt,
         resolution="720P",
-        duration=10,
+        duration=VIDEO_DURATION,
         audio=False,
     )
 
-    # ── 4a. Background music ──────────────────────────────────────────────────
+    # ── 4a. Background music ────────────────────────────────────────────────
     audio_prompt = build_audio_prompt(selected_topic, strategy)
     log.step("run_content_engine", "INFO",
-             step="4a/6 - Generating background music",
+             step="4a/8 - Generating background music",
              audio_prompt=audio_prompt)
 
-    from utils.run_context import get_run_dir as _get_run_dir
     from service.audio_service import submit_audio_task, poll_audio_task, download_audio
-    music_task = submit_audio_task(audio_prompt, duration=10)
+    music_task = submit_audio_task(audio_prompt, duration=VIDEO_DURATION)
 
-    # ── 4b. Voiceover (parallel while music generates) ───────────────────────
+    # ── 4b. Voiceover with CTA ──────────────────────────────────────────────
     voiceover_script = strategy.get("voiceover_script", "")
     if not voiceover_script:
-        # Fallback: derive from hook_text + cta
         hook_text_tmp = strategy.get("hook_text", "") or strategy.get("hook", "")
         voiceover_script = f"{hook_text_tmp} Check the link in bio for details."
 
+    # Build audio CTA from strategy fields
+    cta_url = strategy.get("cta_url", "")
+    cta_handle = strategy.get("cta_handle", "")
+    cta_voice = ""
+    if cta_handle and cta_url:
+        cta_voice = f"Síguenos en {cta_handle} y visita {cta_url} para más."
+    elif cta_handle:
+        cta_voice = f"Síguenos en {cta_handle} para más contenido así."
+    elif cta_url:
+        cta_voice = f"Visita {cta_url} para más contenido."
+
     log.step("run_content_engine", "INFO",
-             step="4b/6 - Generating English voiceover (Kokoro TTS)",
-             voiceover_script=voiceover_script)
+             step="4b/8 - Generating voiceover with audio CTA",
+             voiceover_script=voiceover_script,
+             cta_voice=cta_voice)
 
-    voiceover_path = generate_voiceover(script=voiceover_script)
+    voiceover_path = generate_voiceover(
+        script=voiceover_script,
+        cta_text=cta_voice,
+    )
 
-    # ── 4c. Wait for music + mix voice over music + mux onto video ────────────
-    log.step("run_content_engine", "INFO", step="4c/6 - Waiting for music, then mixing")
+    # ── 4c. Wait for music + mix + mux onto video ───────────────────────────
+    log.step("run_content_engine", "INFO",
+             step="4c/8 - Waiting for music, then mixing")
     music_url = poll_audio_task(music_task)
     music_path = download_audio(music_url)
 
@@ -195,37 +219,52 @@ def run_content_engine(selected_topic: str, strategy: dict) -> dict:
         video_path=silent_video_path,
         voiceover_path=voiceover_path,
         music_path=music_path,
-        music_volume=0.18,   # music at 18% — voice is always clear
+        music_volume=0.18,
     )
 
-    # ── 5. Burn text overlays (reel-native style) ─────────────────────────────
+    # ── 5. Word-by-word subtitles (Alex Hormozi style) ─────────────────────
+    from service.subtitle_service import add_word_by_word_subtitles
+
     hook = strategy.get("hook", "")
     hook_text = strategy.get("hook_text", "")
     on_screen_text = strategy.get("on_screen_text") or ""
-    cta = strategy.get("cta", "")
+    cta_text_overlay = strategy.get("cta", "")
 
     log.step("run_content_engine", "INFO",
-             step="5/6 - Burning text overlays",
-             hook_text=hook_text[:60] if hook_text else hook[:60],
-             on_screen_text=on_screen_text,
-             cta=cta)
+             step="5/8 - Burning word-by-word subtitles",
+             transcript=voiceover_script[:60],
+             hook_text=hook_text[:60] if hook_text else hook[:60])
 
-    subtitled_path = add_subtitles_to_video(
+    subtitled_path = add_word_by_word_subtitles(
         video_path=video_with_audio,
-        hook=hook,
-        hook_text=hook_text,
-        on_screen_text=on_screen_text,
-        cta=cta,
+        transcript=voiceover_script,
+        run_dir=get_run_dir(),
+        duration=VIDEO_DURATION,
+    )
+
+    # ── 6. Append end-card (visual CTA) ──────────────────────────────────────
+    from service.endcard_service import add_endcard
+
+    log.step("run_content_engine", "INFO",
+             step="6/8 - Appending end-card CTA",
+             cta_follow=cta_handle or "",
+             cta_url=cta_url or "")
+
+    with_endcard = add_endcard(
+        video_path=subtitled_path,
+        cta_follow=cta_handle or "",
+        cta_url=cta_url or "",
+        duration=3.0,
         run_dir=get_run_dir(),
     )
 
-    # ── Rename final video to a human-readable name ───────────────────────────
+    # ── Rename final video to a human-readable name ─────────────────────────
     slug = re.sub(r"[^\w\s-]", "", selected_topic.lower())
     slug = re.sub(r"[\s]+", "_", slug.strip())[:50]
     final_video_path = os.path.join(get_run_dir(), f"REEL_{slug}.mp4")
-    shutil.move(subtitled_path, final_video_path)
+    shutil.move(with_endcard, final_video_path)
     log.step("run_content_engine", "INFO",
-             step="6/6 - Final video renamed",
+             step="8/8 - Final video renamed",
              final_video_path=final_video_path)
 
     result = {
@@ -243,10 +282,13 @@ def run_content_engine(selected_topic: str, strategy: dict) -> dict:
         "hook_text": hook_text,
         "voiceover_script": voiceover_script,
         "voiceover_path": voiceover_path,
+        "cta_voice": cta_voice,
         "emotion": strategy.get("emotion"),
         "caption": strategy.get("caption"),
         "hashtags": strategy.get("hashtags", []),
-        "cta": cta,
+        "cta": cta_text_overlay,
+        "cta_url": cta_url,
+        "cta_handle": cta_handle,
         "on_screen_text": on_screen_text,
     }
 
@@ -256,6 +298,7 @@ def run_content_engine(selected_topic: str, strategy: dict) -> dict:
              style_anchor=style_anchor,
              silent_video=silent_video_path,
              voiceover_script=voiceover_script,
+             cta_voice=cta_voice,
              video_with_audio=video_with_audio,
              final_video=final_video_path,
              caption_preview=str(strategy.get("caption", ""))[:80])

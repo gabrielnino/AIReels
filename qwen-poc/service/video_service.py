@@ -16,7 +16,7 @@ def submit_video_task(
     img_url: str,
     prompt: str,
     resolution: str = "720p",
-    duration: int = 10,
+    duration: int = 15,
 ) -> dict:
     """Submits an async image-to-video task to fal.ai Wan 2.1 i2v."""
     log.step("submit_video_task", "IN",

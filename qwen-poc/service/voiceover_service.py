@@ -140,14 +140,21 @@ def download_voiceover(audio_url: str) -> str:
 
 # ── 4. Orchestrator ───────────────────────────────────────────────────────────
 
-def generate_voiceover(script: str, voice: str = DEFAULT_VOICE) -> str:
+def generate_voiceover(script: str, voice: str = DEFAULT_VOICE, cta_text: str = "") -> str:
     """
     Full flow: script → Kokoro TTS → download WAV.
     Returns local path to the voiceover audio file.
-    """
-    log.step("generate_voiceover", "IN", voice=voice, script_preview=script[:80])
 
-    task = submit_tts_task(script, voice=voice)
+    Args:
+        script    : Main narration text.
+        cta_text  : Optional CTA appended to the end of the audio (e.g.
+                    "Síguenos en @usuario o visita tudominio.com para más").
+    """
+    log.step("generate_voiceover", "IN", voice=voice, script_preview=script[:80], cta=cta_text[:60] if cta_text else "")
+
+    full_script = f"{script} {cta_text}".strip() if cta_text else script
+
+    task = submit_tts_task(full_script, voice=voice)
     audio_url = poll_tts_task(task)
     local_path = download_voiceover(audio_url)
 
