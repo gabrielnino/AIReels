@@ -1,6 +1,7 @@
 from service.llm_service import generate_text
 from service.image_service import generate_image_urls
 from service.video_service import generate_video
+from service.audio_service import generate_audio_for_video
 from models.request_models import GenerateImageRequest
 from utils.logger import get_logger
 
@@ -30,46 +31,74 @@ def expand_to_prompt(topic: str) -> str:
     return clean_prompt
 
 
+def build_audio_prompt(topic: str, strategy: dict) -> str:
+    """
+    Builds a MusicGen prompt from the topic and strategy fields so the
+    generated music matches the mood and energy of the reel.
+    """
+    emotion = strategy.get("emotion", "energetic")
+    narrative = strategy.get("narrative", "")
+    # Keep it short and descriptive — MusicGen works best under ~100 chars
+    base = f"concert music, {emotion.lower()}, live performance energy, crowd atmosphere"
+    if narrative:
+        base += f", {narrative[:60]}"
+    return base
+
+
 def run_content_engine(selected_topic: str, strategy: dict) -> dict:
-    """Full pipeline: Topic + Strategy → Image Prompt → Image → Video Reel."""
+    """Full pipeline: Topic + Strategy → Image Prompt → Image → Silent Video → Audio → Final Reel."""
     log.step("run_content_engine", "IN",
              topic=selected_topic,
              motion_prompt=strategy.get("motion_prompt"),
              emotion=strategy.get("emotion"))
 
     # 1. Prompt Expansion
-    log.step("run_content_engine", "INFO", step="1/3 - Expanding topic into image prompt")
+    log.step("run_content_engine", "INFO", step="1/4 - Expanding topic into image prompt")
     enhanced_prompt = expand_to_prompt(selected_topic)
 
     # 2. Image Generation via fal.ai Flux Dev
-    log.step("run_content_engine", "INFO", step="2/3 - Generating base image", prompt=enhanced_prompt)
+    log.step("run_content_engine", "INFO", step="2/4 - Generating base image", prompt=enhanced_prompt)
     img_req = GenerateImageRequest(prompt=enhanced_prompt, images=[], n=1)
     image_urls = generate_image_urls(img_req)
 
     if not image_urls:
-        log.step("run_content_engine", "ERR", step="2/3", error="Image generation returned no URLs")
+        log.step("run_content_engine", "ERR", step="2/4", error="Image generation returned no URLs")
         raise ValueError("Image generation failed to return a URL.")
 
     base_image_url = image_urls[0]
-    log.step("run_content_engine", "INFO", step="2/3 - Image ready", image_url=base_image_url)
+    log.step("run_content_engine", "INFO", step="2/4 - Image ready", image_url=base_image_url)
 
-    # 3. Video Generation via fal.ai Wan 2.1 i2v
+    # 3. Silent Video Generation via fal.ai Wan i2v
     motion_prompt = strategy.get("motion_prompt", "gentle dynamic motion, cinematic camera pan, lively movement")
-    log.step("run_content_engine", "INFO", step="3/3 - Submitting video task", motion_prompt=motion_prompt)
+    log.step("run_content_engine", "INFO", step="3/4 - Generating silent video", motion_prompt=motion_prompt)
 
-    video_path = generate_video(
+    silent_video_path = generate_video(
         img_url=base_image_url,
         prompt=motion_prompt,
         resolution="720P",
         duration=10,
-        audio=False
+        audio=False,
+    )
+
+    # 4. Audio Generation via fal.ai MusicGen + FFmpeg mux
+    audio_prompt = build_audio_prompt(selected_topic, strategy)
+    log.step("run_content_engine", "INFO",
+             step="4/4 - Generating concert audio & muxing",
+             audio_prompt=audio_prompt)
+
+    final_video_path = generate_audio_for_video(
+        video_path=silent_video_path,
+        audio_prompt=audio_prompt,
+        duration=10,
     )
 
     result = {
         "topic": selected_topic,
         "base_prompt": enhanced_prompt,
         "image_url": base_image_url,
-        "final_video_path": video_path,
+        "silent_video_path": silent_video_path,
+        "final_video_path": final_video_path,
+        "audio_prompt": audio_prompt,
         "narrative": strategy.get("narrative"),
         "hook": strategy.get("hook"),
         "emotion": strategy.get("emotion"),
@@ -82,6 +111,8 @@ def run_content_engine(selected_topic: str, strategy: dict) -> dict:
     log.step("run_content_engine", "OUT",
              topic=selected_topic,
              image_url=base_image_url,
-             video_path=video_path,
+             silent_video=silent_video_path,
+             final_video=final_video_path,
+             audio_prompt=audio_prompt,
              caption_preview=str(strategy.get("caption", ""))[:80])
     return result
