@@ -198,31 +198,59 @@ def generate_audio_for_video(video_path: str, audio_prompt: str, duration: int =
 
 # ── 6. Voice + Music mixer ────────────────────────────────────────────────────
 
+def _load_audio_config() -> dict:
+    """Loads audio settings from config.json, with fallback defaults."""
+    config_path = os.path.join(_PROJECT_ROOT, "config.json")
+    if os.path.exists(config_path):
+        try:
+            with open(config_path) as f:
+                cfg = json.load(f)
+            return cfg.get("audio", {})
+        except Exception:
+            pass
+    return {}
+
+
+def _percent_to_volume(percent: float) -> float:
+    """Converts a 0-100 percentage to an FFmpeg volume multiplier (0.0-1.0)."""
+    return max(0.0, min(percent, 100)) / 100.0
+
+
 def mix_voice_and_music(
     video_path: str,
     voiceover_path: str,
     music_path: str,
-    music_volume: float = 0.18,
+    music_volume: float = None,
+    voice_volume: float = None,
 ) -> str:
     """
     Mixes a voiceover track over background music, then muxes both onto the video.
 
-    The voiceover sits at full volume (1.0). The music is ducked to `music_volume`
-    (default 0.18 = 18%) so the narration is always intelligible.
+    Volumes read from config.json by default (values are percentages 0-100):
+      - audio.voice_percent  (default 80 -> voice at 80% of max)
+      - audio.music_percent  (default 8  -> music at 8% of max)
 
-    FFmpeg filter graph:
-      [music] volume=0.18 → [music_low]
-      [voice] + [music_low] → amix(inputs=2, duration=shortest) → [mixed]
-      [video] + [mixed] → output MP4
-
-    Returns the path to the final mixed MP4.
+    Explicit volume parameters (as multipliers) override config.json.
     """
     from utils.run_context import get_run_dir
+
+    # Load config defaults if not explicitly provided
+    audio_config = _load_audio_config()
+    if voice_volume is None:
+        voice_pct = audio_config.get("voice_percent", 80)
+        voice_volume = _percent_to_volume(voice_pct)
+    if music_volume is None:
+        music_pct = audio_config.get("music_percent", 8)
+        music_volume = _percent_to_volume(music_pct)
+
     log.step("mix_voice_and_music", "IN",
              video=video_path,
              voiceover=voiceover_path,
              music=music_path,
-             music_volume=music_volume)
+             music_percent=audio_config.get("music_percent", 8),
+             voice_percent=audio_config.get("voice_percent", 80),
+             music_volume=music_volume,
+             voice_volume=voice_volume)
 
     run_dir = get_run_dir()
     out_path = os.path.join(run_dir, f"{uuid.uuid4()}_mixed.mp4")
@@ -232,8 +260,9 @@ def mix_voice_and_music(
     #   Input 1 = voiceover
     #   Input 2 = background music
     audio_filter = (
+        f"[1:a]volume={voice_volume}[voice_boost];"
         f"[2:a]volume={music_volume}[music_low];"
-        f"[1:a][music_low]amix=inputs=2:duration=shortest:dropout_transition=0[mixed]"
+        f"[voice_boost][music_low]amix=inputs=2:duration=shortest:dropout_transition=0[mixed]"
     )
 
     cmd = [

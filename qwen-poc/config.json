@@ -1,0 +1,14 @@
+{
+  "audio": {
+    "voice_percent": 80,
+    "music_percent": 8
+  },
+  "video": {
+    "duration": 15,
+    "resolution": "720P"
+  },
+  "subtitle_style": "word_by_word",
+  "endcard_duration": 3,
+  "lyria_model": "google/lyria-3-clip-preview",
+  "fallback_music": "stable-audio"
+}
