@@ -2,9 +2,15 @@ import os
 import re
 import shutil
 
+import os
+import re
+import shutil
+
 from service.llm_service import generate_text
 from service.image_service import generate_image_urls
 from service.video_service import generate_video
+from service.audio_service import generate_audio_for_video, mix_voice_and_music
+from service.voiceover_service import generate_voiceover
 from service.audio_service import generate_audio_for_video, mix_voice_and_music
 from service.voiceover_service import generate_voiceover
 from service.subtitle_service import add_subtitles_to_video
@@ -38,6 +44,8 @@ def expand_to_prompt(topic: str, strategy: dict) -> dict:
     instructions = f"""
 You are crafting the OPENING FRAME of a viral Instagram Reel (9:16 vertical format).
 This image is what the viewer sees in the first split-second — it must stop the scroll.
+You are crafting the OPENING FRAME of a viral Instagram Reel (9:16 vertical format).
+This image is what the viewer sees in the first split-second — it must stop the scroll.
 
 Topic       : '{topic}'
 Emotion     : '{emotion}'
@@ -51,8 +59,18 @@ CRITICAL RULES for the image prompt:
 - The image should feel like a screenshot from a viral reel, not a stock photo
 - Maximum visual density: textures, colors, details that reward a second look
 
+CRITICAL RULES for the image prompt:
+- Compose for VERTICAL 9:16 frame (portrait, not landscape)
+- The subject must be large, close, and visually DOMINANT — no wide empty scenes
+- Use tension, contrast, or unexpected detail that creates curiosity
+- Real-world lighting (golden hour, neon at night, dramatic window light) — no studio sterility
+- The image should feel like a screenshot from a viral reel, not a stock photo
+- Maximum visual density: textures, colors, details that reward a second look
+
 Produce TWO outputs in this exact JSON format (no markdown, no code blocks):
 {{
+  "image_prompt": "A hyper-specific cinematic scene in under 65 words. Format: [subject + action], [setting + atmosphere], [camera angle + framing], [lighting quality], [color palette], [mood/texture detail]. Must feel NATIVE to Instagram Reels — not a stock photo.",
+  "style_anchor": "Under 20 words. The visual DNA to replicate in the video: color palette, lighting type, mood, texture, energy level."
   "image_prompt": "A hyper-specific cinematic scene in under 65 words. Format: [subject + action], [setting + atmosphere], [camera angle + framing], [lighting quality], [color palette], [mood/texture detail]. Must feel NATIVE to Instagram Reels — not a stock photo.",
   "style_anchor": "Under 20 words. The visual DNA to replicate in the video: color palette, lighting type, mood, texture, energy level."
 }}
@@ -94,8 +112,26 @@ def build_audio_prompt(topic: str, strategy: dict) -> str:
     """
     Builds a stable-audio prompt that matches the reel's mood and energy.
     Uses audio_vibe from strategy when available for a more specific sound.
+    Uses audio_vibe from strategy when available for a more specific sound.
     """
     emotion = strategy.get("emotion", "energetic")
+    audio_vibe = strategy.get("audio_vibe", "")
+
+    # Map emotions to concrete music descriptors
+    emotion_map = {
+        "desire": "smooth, seductive R&B groove, bass-forward, slow burn build",
+        "fomo": "upbeat pop, driving beat, energetic rise, punchy drops",
+        "surprise": "dramatic cinematic swell, sudden hit, tension-release",
+        "delight": "bright indie pop, feel-good melody, clapping rhythm, joyful",
+        "curiosity": "lo-fi hip hop, mysterious pads, subtle tension, chill groove",
+        "nostalgia": "warm acoustic guitar, soft piano, nostalgic Americana feel",
+        "pride": "triumphant brass, anthemic build, punchy percussion",
+    }
+    emotion_music = emotion_map.get(emotion.lower(), "upbeat pop, energetic, driving beat")
+
+    if audio_vibe:
+        return f"{audio_vibe}, {emotion_music}, short-form social media energy, 10 seconds"
+    return f"{emotion_music}, short-form social media energy, punchy intro, 10 seconds"
     audio_vibe = strategy.get("audio_vibe", "")
 
     # Map emotions to concrete music descriptors
@@ -174,9 +210,11 @@ def run_content_engine(selected_topic: str, strategy: dict) -> dict:
     )
 
     # ── 4a. Background music ────────────────────────────────────────────────
+    # ── 4a. Background music ──────────────────────────────────────────────────
     audio_prompt = build_audio_prompt(selected_topic, strategy)
     log.step("run_content_engine", "INFO",
              step="4a/8 - Generating background music",
+             step="4a/6 - Generating background music",
              audio_prompt=audio_prompt)
 
     from service.audio_service import submit_audio_task, poll_audio_task, download_audio
@@ -216,16 +254,44 @@ def run_content_engine(selected_topic: str, strategy: dict) -> dict:
     music_path = download_audio(music_url)
 
     video_with_audio = mix_voice_and_music(
+    from utils.run_context import get_run_dir as _get_run_dir
+    from service.audio_service import submit_audio_task, poll_audio_task, download_audio
+    music_task = submit_audio_task(audio_prompt, duration=10)
+
+    # ── 4b. Voiceover (parallel while music generates) ───────────────────────
+    voiceover_script = strategy.get("voiceover_script", "")
+    if not voiceover_script:
+        # Fallback: derive from hook_text + cta
+        hook_text_tmp = strategy.get("hook_text", "") or strategy.get("hook", "")
+        voiceover_script = f"{hook_text_tmp} Check the link in bio for details."
+
+    log.step("run_content_engine", "INFO",
+             step="4b/6 - Generating English voiceover (Kokoro TTS)",
+             voiceover_script=voiceover_script)
+
+    voiceover_path = generate_voiceover(script=voiceover_script)
+
+    # ── 4c. Wait for music + mix voice over music + mux onto video ────────────
+    log.step("run_content_engine", "INFO", step="4c/6 - Waiting for music, then mixing")
+    music_url = poll_audio_task(music_task)
+    music_path = download_audio(music_url)
+
+    video_with_audio = mix_voice_and_music(
         video_path=silent_video_path,
         voiceover_path=voiceover_path,
         music_path=music_path,
         music_volume=0.18,
+        voiceover_path=voiceover_path,
+        music_path=music_path,
+        music_volume=0.18,   # music at 18% — voice is always clear
     )
 
     # ── 5. Word-by-word subtitles (Alex Hormozi style) ─────────────────────
     from service.subtitle_service import add_word_by_word_subtitles
 
+    # ── 5. Burn text overlays (reel-native style) ─────────────────────────────
     hook = strategy.get("hook", "")
+    hook_text = strategy.get("hook_text", "")
     hook_text = strategy.get("hook_text", "")
     on_screen_text = strategy.get("on_screen_text") or ""
     cta_text_overlay = strategy.get("cta", "")
@@ -234,8 +300,13 @@ def run_content_engine(selected_topic: str, strategy: dict) -> dict:
              step="5/8 - Burning word-by-word subtitles",
              transcript=voiceover_script[:60],
              hook_text=hook_text[:60] if hook_text else hook[:60])
+             step="5/6 - Burning text overlays",
+             hook_text=hook_text[:60] if hook_text else hook[:60],
+             on_screen_text=on_screen_text,
+             cta=cta)
 
     subtitled_path = add_word_by_word_subtitles(
+    subtitled_path = add_subtitles_to_video(
         video_path=video_with_audio,
         transcript=voiceover_script,
         run_dir=get_run_dir(),
@@ -255,6 +326,10 @@ def run_content_engine(selected_topic: str, strategy: dict) -> dict:
         cta_follow=cta_handle or "",
         cta_url=cta_url or "",
         duration=3.0,
+        hook=hook,
+        hook_text=hook_text,
+        on_screen_text=on_screen_text,
+        cta=cta,
         run_dir=get_run_dir(),
     )
 
@@ -265,6 +340,15 @@ def run_content_engine(selected_topic: str, strategy: dict) -> dict:
     shutil.move(with_endcard, final_video_path)
     log.step("run_content_engine", "INFO",
              step="8/8 - Final video renamed",
+             final_video_path=final_video_path)
+
+    # ── Rename final video to a human-readable name ───────────────────────────
+    slug = re.sub(r"[^\w\s-]", "", selected_topic.lower())
+    slug = re.sub(r"[\s]+", "_", slug.strip())[:50]
+    final_video_path = os.path.join(get_run_dir(), f"REEL_{slug}.mp4")
+    shutil.move(subtitled_path, final_video_path)
+    log.step("run_content_engine", "INFO",
+             step="6/6 - Final video renamed",
              final_video_path=final_video_path)
 
     result = {
@@ -283,6 +367,9 @@ def run_content_engine(selected_topic: str, strategy: dict) -> dict:
         "voiceover_script": voiceover_script,
         "voiceover_path": voiceover_path,
         "cta_voice": cta_voice,
+        "hook_text": hook_text,
+        "voiceover_script": voiceover_script,
+        "voiceover_path": voiceover_path,
         "emotion": strategy.get("emotion"),
         "caption": strategy.get("caption"),
         "hashtags": strategy.get("hashtags", []),
@@ -299,6 +386,7 @@ def run_content_engine(selected_topic: str, strategy: dict) -> dict:
              silent_video=silent_video_path,
              voiceover_script=voiceover_script,
              cta_voice=cta_voice,
+             voiceover_script=voiceover_script,
              video_with_audio=video_with_audio,
              final_video=final_video_path,
              caption_preview=str(strategy.get("caption", ""))[:80])

@@ -18,19 +18,17 @@ def run_strategy_engine(topic: str, score: float, reason: str,
              reason=reason, angle=angle, why_now=why_now)
 
     system_prompt = (
-        "You are a top-tier Instagram Reels creator with 2M+ followers and a proven track record "
-        "of generating viral content for local lifestyle brands in Vancouver, Canada. "
-        "You know exactly what stops the scroll in the first 2 seconds, how to build tension "
-        "through a 15-second arc, and how to convert views into link-in-bio clicks. "
-        "You write hooks that feel NATIVE to Instagram — not like ads. "
-        "You never use corporate language. You always write like a real person who lives in Vancouver."
+        "You are a world-class Instagram growth strategist and viral content director "
+        "specializing in short-form video for local lifestyle brands in Vancouver, Canada. "
+        "You deeply understand the Instagram algorithm, scroll-stopping hooks, and how to "
+        "drive traffic from Reels to external portals."
     )
 
     angle_line = f"Visual angle to exploit: {angle}" if angle else ""
     why_now_line = f"Why it's blowing up RIGHT NOW: {why_now}" if why_now else ""
 
     prompt = f"""
-You're scripting a 15-second Instagram Reel that will stop the scroll, get saved, and drive traffic.
+A trending topic has been selected for an Instagram Reel in Vancouver:
 
 Topic: "{topic}"
 Virality Score: {score}/10
@@ -38,46 +36,19 @@ Why selected: {reason}
 {angle_line}
 {why_now_line}
 
-REEL STRUCTURE (strict 15-second arc):
-- 0–3s: PATTERN INTERRUPT hook — bold text on-screen, the scroll-stopper
-- 3–8s: PAYOFF / REVEAL — delivers on the hook's promise
-- 8–12s: EMOTIONAL PEAK — desire, FOMO, surprise, delight
-- 12–15s: CTA + LOOP — clear action + line that references the hook for seamless replay
-
-HOOK FORMULAS to choose from (pick the best fit for this topic):
-  - "POV: you just discovered [X] in Vancouver"
-  - "Nobody is talking about [X] but it's actually insane"
-  - "Wait until you see [X] — I was shook"
-  - "I tried [X] so you don't have to (here's the truth)"
-  - Bold TEXT ON SCREEN with no explanation — let curiosity do the work
-  - A shocking close-up or extreme detail that makes them wonder "what IS that?"
-
-CAPTION RULES:
-  - First line = same energy as the hook (must work without seeing the video)
-  - Use line breaks for readability
-  - 1–2 emojis max, used strategically not decoratively
-  - End with a soft CTA: "Details in bio 👆" or "Link in bio to explore"
-  - No hashtags in the caption body — keep them clean
-
-AUDIO DIRECTION:
-  - Pick a vibe: trending upbeat pop, lo-fi chill, hype trap, cinematic swell, or viral sound-bite style
-  - Match the emotional arc of the reel (builds to the peak moment)
+Your job is to design a complete content strategy for a 10-second Instagram Reel on this topic.
+The goal is maximum engagement AND driving traffic to our portal (link in bio).
 
 Respond STRICTLY with a single valid JSON object. No markdown, no code blocks, no comments.
 {{
-  "narrative": "One sentence: the full 15-second emotional arc from first frame to last.",
-  "hook": "EXACT visual description of seconds 0–2. What does the viewer SEE that stops them? Be hyper-specific about subject, framing, action.",
-  "hook_text": "The bold on-screen text that appears in the first 3 seconds. Short, punchy, native Instagram. Max 8 words. Can be a question, bold claim, or POV opener.",
-  "emotion": "The ONE emotion the reel must trigger. Choose: desire / FOMO / surprise / delight / curiosity / nostalgia / pride",
-  "motion_prompt": "Cinematic AI video direction. Specify: camera move (push-in, whip pan, slow zoom, handheld shake), pacing (fast cuts / slow burn), and key visual moment. Under 25 words.",
-  "audio_vibe": "One of: upbeat pop / lo-fi chill / hype trap / cinematic swell / viral sound-bite. Add 5 words of mood description.",
-  "voiceover_script": "A punchy English narration script for a 15-second reel voiceover. Natural, conversational, NOT corporate. Mirrors the hook_text energy. 3–4 short sentences (~35–40 words). End with a line that references the hook to create seamless loop. Example: 'Okay wait — this literally just opened in Gastown. Cheez Whiz AND caviar on a hot dog. If that sounds insane, wait till you see this:'",
-  "caption": "Full Instagram caption. First line is a hook. Use line breaks. 2 emojis max. End with soft CTA to bio link. Max 120 words.",
-  "hashtags": ["exactly", "20", "hashtags", "without", "hash", "symbol", "mix", "of", "niche", "geo", "trending"],
-  "cta": "On-screen CTA text for seconds 12–15. Ultra-short action. Max 6 words. Example: 'Link in bio 👆' or 'Save this 🔖'",
-  "cta_url": "The website URL to promote. Use 'tudominio.com' as placeholder.",
-  "cta_handle": "The social media handle to promote. Use '@tuusuario' as placeholder.",
-  "on_screen_text": "Mid-reel text overlay (seconds 3–8). The KEY MESSAGE in max 5 words. Use null only if the visual is self-explanatory."
+  "narrative": "What story this 10-second reel tells. One sentence describing the arc from frame 1 to last frame.",
+  "hook": "What happens in the FIRST 2 SECONDS to stop the scroll. Be very specific and visual.",
+  "emotion": "The primary emotion this reel must provoke. One word or short phrase.",
+  "motion_prompt": "A specific vivid cinematic motion description for the AI video model. Focus on camera movement, energy, pacing. Under 20 words.",
+  "caption": "The full Instagram caption. Start with a scroll-stopping first line, add context, end with a CTA pointing to link in bio. Max 150 words.",
+  "hashtags": ["list", "of", "20", "relevant", "hashtags", "mix", "of", "niche", "geo", "trending"],
+  "cta": "The exact call-to-action text to overlay or include. Short and punchy. Max 8 words.",
+  "on_screen_text": "Short text to display on screen during the reel. Max 6 words. Use null if not needed."
 }}
 """
 
