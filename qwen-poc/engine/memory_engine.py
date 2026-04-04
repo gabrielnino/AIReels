@@ -144,3 +144,20 @@ def update_topic_status(topic: str, status: str):
     conn.commit()
     conn.close()
     log.step("update_topic_status", "OUT", topic=topic, status=status)
+
+
+def clear_database() -> int:
+    """
+    Deletes all topics from the memory database.
+    Returns the number of rows deleted.
+    """
+    log.step("clear_database", "IN", db_path=DB_PATH)
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("SELECT COUNT(*) FROM topics")
+    count = cursor.fetchone()[0]
+    cursor.execute("DELETE FROM topics")
+    conn.commit()
+    conn.close()
+    log.step("clear_database", "OUT", deleted=count)
+    return count

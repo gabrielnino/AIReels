@@ -1,3 +1,4 @@
+import sys
 import time
 
 # ── Init the run directory FIRST so the log file is created immediately ───────
@@ -6,7 +7,7 @@ import time
 from utils.run_context import init_run
 init_run()  # creates outputs/run_YYYYMMDD_HHMMSS/ and pipeline.log right away
 
-from engine.memory_engine import init_db, save_topic, update_topic_status
+from engine.memory_engine import init_db, save_topic, update_topic_status, clear_database
 from engine.trend_engine import run_trend_engine
 from engine.decision_engine import run_decision_engine
 from engine.strategy_engine import run_strategy_engine
@@ -118,4 +119,10 @@ def run_reels_pipeline(execute_content: bool = True):
 
 
 if __name__ == "__main__":
+    if "--clear-db" in sys.argv:
+        count = clear_database()
+        log.info(f"🗑️ Database cleared: {count} topic(s) deleted.")
+        if "--no-run" in sys.argv:
+            sys.exit(0)
+
     run_reels_pipeline(execute_content=True)
