@@ -1,3 +1,6 @@
+from utils.run_context import init_run
+init_run()  # must be called before any service that uses get_run_dir()
+
 from models.request_models import GenerateImageRequest
 from service.image_service import generate_image_urls, download_image
 from service.video_service import generate_video
