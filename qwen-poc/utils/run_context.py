@@ -22,12 +22,21 @@ def init_run(base_dir: str = "outputs") -> str:
     """
     Creates the timestamped run directory and returns its path.
     Safe to call multiple times — only the first call actually creates it.
+
+    Also redirects the shared log FileHandler into the new directory so that
+    every log line (including those written during module import) ends up in
+    the timestamped folder.
     """
     global _run_dir
     if _run_dir is None:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         _run_dir = os.path.join(base_dir, f"run_{timestamp}")
         os.makedirs(_run_dir, exist_ok=True)
+
+        # Move the log file into the run directory (no-op if logger not yet used)
+        from utils.logger import redirect_log_to_run_dir
+        redirect_log_to_run_dir(_run_dir)
+
     return _run_dir
 
 

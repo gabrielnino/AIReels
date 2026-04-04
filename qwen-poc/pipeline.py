@@ -1,5 +1,11 @@
 import time
+
+# ── Init the run directory FIRST so the log file is created immediately ───────
+# This must happen before any engine import, because those modules call
+# get_logger() at import time, which opens the FileHandler.
 from utils.run_context import init_run
+init_run()  # creates outputs/run_YYYYMMDD_HHMMSS/ and pipeline.log right away
+
 from engine.memory_engine import init_db, save_topic, update_topic_status
 from engine.trend_engine import run_trend_engine
 from engine.decision_engine import run_decision_engine
@@ -11,7 +17,8 @@ log = get_logger(__name__)
 
 
 def run_reels_pipeline(execute_content: bool = True):
-    run_dir = init_run()
+    from utils.run_context import get_run_dir
+    run_dir = get_run_dir()
     log.info("=" * 44)
     log.info("🚀 STARTED REELS AUTOMATION PIPELINE")
     log.info(f"📁 Run output folder: {run_dir}")
