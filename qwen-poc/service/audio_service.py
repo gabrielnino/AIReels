@@ -194,3 +194,72 @@ def generate_audio_for_video(video_path: str, audio_prompt: str, duration: int =
 
     log.step("generate_audio_for_video", "OUT", final_path=final_path)
     return final_path
+
+
+# ── 6. Voice + Music mixer ────────────────────────────────────────────────────
+
+def mix_voice_and_music(
+    video_path: str,
+    voiceover_path: str,
+    music_path: str,
+    music_volume: float = 0.18,
+) -> str:
+    """
+    Mixes a voiceover track over background music, then muxes both onto the video.
+
+    The voiceover sits at full volume (1.0). The music is ducked to `music_volume`
+    (default 0.18 = 18%) so the narration is always intelligible.
+
+    FFmpeg filter graph:
+      [music] volume=0.18 → [music_low]
+      [voice] + [music_low] → amix(inputs=2, duration=shortest) → [mixed]
+      [video] + [mixed] → output MP4
+
+    Returns the path to the final mixed MP4.
+    """
+    from utils.run_context import get_run_dir
+    log.step("mix_voice_and_music", "IN",
+             video=video_path,
+             voiceover=voiceover_path,
+             music=music_path,
+             music_volume=music_volume)
+
+    run_dir = get_run_dir()
+    out_path = os.path.join(run_dir, f"{uuid.uuid4()}_mixed.mp4")
+
+    # FFmpeg complex filter:
+    #   Input 0 = video (silent)
+    #   Input 1 = voiceover
+    #   Input 2 = background music
+    audio_filter = (
+        f"[2:a]volume={music_volume}[music_low];"
+        f"[1:a][music_low]amix=inputs=2:duration=shortest:dropout_transition=0[mixed]"
+    )
+
+    cmd = [
+        FFMPEG_BIN,
+        "-y",
+        "-i", video_path,       # 0: silent video
+        "-i", voiceover_path,   # 1: voiceover
+        "-i", music_path,       # 2: background music
+        "-filter_complex", audio_filter,
+        "-map", "0:v:0",
+        "-map", "[mixed]",
+        "-c:v", "copy",
+        "-c:a", "aac",
+        "-b:a", "192k",
+        "-shortest",
+        "-movflags", "+faststart",
+        out_path,
+    ]
+
+    log.step("mix_voice_and_music", "INFO", cmd=" ".join(cmd))
+    result = subprocess.run(cmd, capture_output=True, text=True)
+
+    if result.returncode != 0:
+        log.step("mix_voice_and_music", "ERR", stderr=result.stderr[-600:])
+        raise RuntimeError(f"FFmpeg mix_voice_and_music failed:\n{result.stderr[-600:]}")
+
+    size_kb = round(os.path.getsize(out_path) / 1024)
+    log.step("mix_voice_and_music", "OUT", output=out_path, size_kb=size_kb)
+    return out_path
