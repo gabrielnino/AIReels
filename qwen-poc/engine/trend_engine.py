@@ -1,3 +1,17 @@
+"""
+trend_engine.py
+===============
+Fetches real-time signals from multiple query angles, deduplicates,
+and uses DeepSeek to synthesize them into ranked, specific video topics.
+
+Improvements over v1:
+  - Wider query coverage (12 queries vs 7, including arts/outdoor/family)
+  - Uses ALL unique results (up to 30 snippets) instead of just the first 10
+  - Asks the LLM to rank topics by visual + viral potential
+  - Returns richer topic objects {topic, angle, why_now} instead of bare strings
+  - Filters out evergreen/non-time-sensitive content at synthesis time
+"""
+
 import json
 from service.search_service import search
 from service.llm_service import generate_text
@@ -6,22 +20,29 @@ from utils.json_utils import clean_llm_json
 
 log = get_logger(__name__)
 
+# ── Query bank: broad enough to surface diverse opportunities ─────────────────
+SEARCH_QUERIES = [
+    "events vancouver this week",
+    "things to do vancouver this weekend",
+    "trending food restaurants vancouver",
+    "new openings bars restaurants vancouver",
+    "live music concerts vancouver",
+    "arts festivals cultural events vancouver",
+    "outdoor activities nature vancouver",
+    "sports games vancouver",
+    "nightlife parties vancouver",
+    "family events kids vancouver",
+    "pop-ups markets vancouver",
+    "trending vancouver instagram",
+]
+
 
 def fetch_search_trends() -> list:
-    """Executes strategic queries to find recent events and trends in Vancouver."""
-    queries = [
-        "events vancouver this week",
-        "trending food vancouver",
-        "trending news vancouver",
-        "trending sports vancouver",
-        "beer, wine, spirits vancouver",
-        "nightlife vancouver",
-        "live music vancouver",
-    ]
-    log.step("fetch_search_trends", "IN", total_queries=len(queries))
+    """Runs all queries and returns a flat deduplicated list of result dicts."""
+    log.step("fetch_search_trends", "IN", total_queries=len(SEARCH_QUERIES))
 
     raw_results = []
-    for q in queries:
+    for q in SEARCH_QUERIES:
         try:
             res = search(q, count=10)
             if res and res.get("web", {}).get("results"):
@@ -37,7 +58,7 @@ def fetch_search_trends() -> list:
 
 
 def deduplicate_results(results: list) -> list:
-    """Removes duplicate search results by title+url key."""
+    """Removes results with duplicate title+url keys."""
     log.step("deduplicate_results", "IN", count=len(results))
     seen = set()
     unique = []
@@ -48,42 +69,84 @@ def deduplicate_results(results: list) -> list:
         if key not in seen:
             seen.add(key)
             unique.append(r)
-    log.step("deduplicate_results", "OUT", duplicates_removed=len(results) - len(unique), unique=len(unique))
+    log.step("deduplicate_results", "OUT",
+             duplicates_removed=len(results) - len(unique),
+             unique=len(unique))
     return unique
 
 
 def synthesize_topics(raw_results: list) -> list:
-    """Uses DeepSeek to synthesize raw search results into clear video topics."""
+    """
+    Uses DeepSeek to turn raw search results into 6-8 specific, ranked video topics.
+
+    Returns a list of dicts:
+      [{"topic": str, "angle": str, "why_now": str}, ...]
+
+    - topic    : concise, specific reel subject (e.g. "Cherry Blossom Festival at Queen Elizabeth Park")
+    - angle    : the unique visual hook / storytelling angle
+    - why_now  : why this is timely and relevant RIGHT NOW
+    """
     log.step("synthesize_topics", "IN", results_count=len(raw_results))
 
     if not raw_results:
         log.step("synthesize_topics", "OUT", topics=[], reason="no results to synthesize")
         return []
 
-    snippets = [f"- {r.get('title')}: {r.get('description')}" for r in raw_results[:10]]
+    # Use up to 30 snippets to give the LLM richer context
+    snippets = [
+        f"- {r.get('title', '')}: {r.get('description', '')}"
+        for r in raw_results[:30]
+    ]
     context_text = "\n".join(snippets)
-    log.step("synthesize_topics", "INFO", snippets_used=len(snippets), context_preview=context_text[:200])
+    log.step("synthesize_topics", "INFO",
+             snippets_used=len(snippets),
+             context_preview=context_text[:200])
 
     prompt = f"""
-    Given the following search results about what's happening in Vancouver right now:
-    {context_text}
+You are a viral Instagram Reels strategist for a Vancouver lifestyle brand.
 
-    Your task is to synthesize this noise into 3-5 distinct, clear, highly engaging video ideas (topics).
-    Group similar results. Eliminate exact duplicates. Keep the output strictly as a JSON list of strings.
-    Example: ["Canucks hockey game tonight", "Food festivals downtown", "Outdoor movie watch party"]
-    Output ONLY a valid JSON list. No comments, no markdown.
-    """
+Here are fresh search results about what's happening in Vancouver RIGHT NOW:
+{context_text}
 
-    system_prompt = "You are a highly analytical AI capable of extreme conciseness and valid JSON output."
+Your task:
+1. Identify 6-8 DISTINCT, SPECIFIC, TIME-SENSITIVE video topics from these results.
+   - "Specific" means: name the event, venue, neighbourhood, or product — not just a category.
+   - "Time-sensitive" means: happening this week/month — NOT evergreen content.
+   - "Distinct" means: no two topics should be about the same event/theme.
+2. For each topic, define:
+   - "topic"    : the specific reel subject (≤12 words)
+   - "angle"    : the unique visual storytelling hook (≤15 words)
+   - "why_now"  : one sentence on why this is timely RIGHT NOW
+3. Rank them from HIGHEST to LOWEST visual + viral potential for Instagram Reels.
+4. Discard anything: political, tragic, criminal, weather-only, or with zero visual potential.
+
+Respond ONLY with a valid JSON array. No markdown, no code blocks, no comments.
+[
+  {{"topic": "...", "angle": "...", "why_now": "..."}},
+  ...
+]
+"""
+
+    system_prompt = (
+        "You are a sharp social media strategist. "
+        "You output ONLY valid JSON arrays. No prose, no markdown."
+    )
     log.step("synthesize_topics", "INFO", message="Calling DeepSeek to synthesize topics...")
-
     response = generate_text(prompt=prompt, model="deepseek-chat", system_prompt=system_prompt)
     log.step("synthesize_topics", "INFO", raw_llm_response=response)
 
     try:
         topics = json.loads(clean_llm_json(response))
-        log.step("synthesize_topics", "OUT", topics=topics)
-        return topics
+        # Normalise: accept both plain strings (legacy) and dicts
+        normalised = []
+        for t in topics:
+            if isinstance(t, dict):
+                normalised.append(t)
+            elif isinstance(t, str):
+                normalised.append({"topic": t, "angle": "", "why_now": ""})
+
+        log.step("synthesize_topics", "OUT", topics_count=len(normalised), topics=normalised)
+        return normalised
 
     except json.JSONDecodeError as e:
         log.step("synthesize_topics", "ERR", error=str(e), raw_response=response)
@@ -91,7 +154,7 @@ def synthesize_topics(raw_results: list) -> list:
 
 
 def run_trend_engine() -> list:
-    """Main entry point: fetch trends → deduplicate → synthesize topics."""
+    """Main entry: fetch → deduplicate → synthesize. Returns list of topic dicts."""
     log.step("run_trend_engine", "IN")
     results = fetch_search_trends()
     topics = synthesize_topics(results)

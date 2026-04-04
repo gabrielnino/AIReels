@@ -6,13 +6,15 @@ from utils.json_utils import clean_llm_json
 log = get_logger(__name__)
 
 
-def run_strategy_engine(topic: str, score: float, reason: str) -> dict:
+def run_strategy_engine(topic: str, score: float, reason: str,
+                        angle: str = "", why_now: str = "") -> dict:
     """
     Given a winning topic, generates a full Instagram Reel content strategy:
       - narrative, hook, emotion, motion_prompt
       - caption, hashtags, cta, on_screen_text
     """
-    log.step("run_strategy_engine", "IN", topic=topic, score=score, reason=reason)
+    log.step("run_strategy_engine", "IN", topic=topic, score=score,
+             reason=reason, angle=angle, why_now=why_now)
 
     system_prompt = (
         "You are a world-class Instagram growth strategist and viral content director "
@@ -21,12 +23,17 @@ def run_strategy_engine(topic: str, score: float, reason: str) -> dict:
         "drive traffic from Reels to external portals."
     )
 
+    angle_line = f"Suggested visual angle: {angle}" if angle else ""
+    why_now_line = f"Why this is timely right now: {why_now}" if why_now else ""
+
     prompt = f"""
 A trending topic has been selected for an Instagram Reel in Vancouver:
 
 Topic: "{topic}"
 Virality Score: {score}/10
 Why it was selected: {reason}
+{angle_line}
+{why_now_line}
 
 Your job is to design a complete content strategy for a 10-second Instagram Reel on this topic.
 The goal is maximum engagement AND driving traffic to our portal (link in bio).

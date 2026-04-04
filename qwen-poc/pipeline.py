@@ -48,19 +48,26 @@ def run_reels_pipeline(execute_content: bool = True):
     topic = winning_topic_data.get("topic")
     score = winning_topic_data.get("final_score")
     reason = winning_topic_data.get("reason")
+    category_tag = winning_topic_data.get("category_tag", "other")
+    angle = winning_topic_data.get("angle", "")
+    why_now = winning_topic_data.get("why_now", "")
 
     log.step("run_reels_pipeline", "INFO",
              message="🏆 Winning topic selected",
              topic=topic,
              score=score,
+             category=category_tag,
+             angle=angle,
+             why_now=why_now,
              reason=reason)
 
-    topic_id = save_topic(topic, status="selected", score=score)
+    topic_id = save_topic(topic, status="selected", score=score, category_tag=category_tag)
     if topic_id:
         log.step("run_reels_pipeline", "INFO", message="Saved to memory", topic_id=topic_id)
 
     log.step("run_reels_pipeline", "INFO", step="3/4 - Strategy engine (content strategy)")
-    strategy = run_strategy_engine(topic, score=score, reason=reason)
+    strategy = run_strategy_engine(topic, score=score, reason=reason,
+                                   angle=angle, why_now=why_now)
 
     log.step("run_reels_pipeline", "INFO",
              message="📋 Content strategy ready",
