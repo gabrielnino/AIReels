@@ -1,2 +1,0 @@
-file '/home/luis/code/AIReels/outputs/run_20260404_161805/8c84162e-a6c3-40fd-8d01-c257f1bd28b6_wbw_subtitled.mp4'
-file '/home/luis/code/AIReels/outputs/run_20260404_161805/e66090b8-dda0-4785-8a9f-c7b649c498c2_endclip.mp4'

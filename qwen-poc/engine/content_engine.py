@@ -90,18 +90,21 @@ def build_audio_prompt(topic: str, strategy: dict) -> str:
     return f"{emotion_music}, short-form social media energy, punchy intro"
 
 
-def run_content_engine(selected_topic: str, strategy: dict) -> dict:
+def run_content_engine(selected_topic: str, strategy: dict, language: str = "en") -> dict:
     """
     Full pipeline:
       1. Expand topic -> image prompt + style anchor
       2. Generate base image (Flux Dev)
       3. Generate silent video (Wan i2v) - 15s, style-coherent
       4a. Generate background music (Google Lyria 3 via OpenRouter, fallback: stable-audio)
-      4b. Generate voiceover (Kokoro TTS) with audio CTA
+      4b. Generate voiceover with audio CTA (language-aware)
       4c. Mix voice + music (voice boosted 2x, music at 10%)
       5. Burn word-by-word subtitles (Alex Hormozi style)
       6. Append end-card (visual CTA)
       7. Generate SCRIPT.json + SCRIPT.md
+
+    Args:
+        language: "en" (default) or "es". Controls voice and CTA language.
     """
     from utils.run_context import get_run_dir
 
@@ -162,16 +165,29 @@ def run_content_engine(selected_topic: str, strategy: dict) -> dict:
 
     cta_url = strategy.get("cta_url", "tudominio.com")
     cta_handle = strategy.get("cta_handle", "@tuusuario")
-    cta_voice = ""
-    if cta_handle and cta_url:
-        cta_voice = f"Síguenos en {cta_handle} y visita {cta_url} para más."
-    elif cta_handle:
-        cta_voice = f"Síguenos en {cta_handle} para más contenido así."
-    elif cta_url:
-        cta_voice = f"Visita {cta_url} para más contenido."
 
-    log.step("run_content_engine", "INFO", step="4b/7 - Generating voiceover", cta_voice=cta_voice[:60] if cta_voice else "")
-    voiceover_path = generate_voiceover(script=voiceover_script, cta_text=cta_voice)
+    # Language-aware CTA generation
+    if language == "es":
+        if cta_handle and cta_url:
+            cta_voice = f"Síguenos en {cta_handle} y visita {cta_url} para más."
+        elif cta_handle:
+            cta_voice = f"Síguenos en {cta_handle} para más contenido así."
+        elif cta_url:
+            cta_voice = f"Visita {cta_url} para más contenido."
+        else:
+            cta_voice = ""
+    else:
+        if cta_handle and cta_url:
+            cta_voice = f"Follow {cta_handle} and visit {cta_url} for more."
+        elif cta_handle:
+            cta_voice = f"Follow {cta_handle} for more content like this."
+        elif cta_url:
+            cta_voice = f"Visit {cta_url} for more content."
+        else:
+            cta_voice = ""
+
+    log.step("run_content_engine", "INFO", step="4b/7 - Generating voiceover", language=language, cta_voice=cta_voice[:60] if cta_voice else "")
+    voiceover_path = generate_voiceover(script=voiceover_script, language=language, cta_text=cta_voice)
 
     # 4c. Mix voice + music (voice 2x, music 10%)
     log.step("run_content_engine", "INFO", step="4c/7 - Mixing voice + music")

@@ -1,18 +1,22 @@
 """
 voiceover_service.py
 ====================
-Generates an English voiceover for a Reel using fal.ai Kokoro TTS.
+Generates a voiceover for a Reel using fal.ai Kokoro TTS.
 
 Kokoro produces natural-sounding speech in seconds — perfect for
 10-second social media narration.
 
 Available voices (pass as `voice` arg):
-  af_sarah    American female, warm & conversational  ← default
+  af_sarah    American female, warm & conversational  ← default English
   af_bella    American female, expressive & energetic
   am_adam     American male, authoritative
   am_michael  American male, friendly & upbeat
   bf_emma     British female, elegant
   bm_george   British male, deep & confident
+  sf_speech   Spanish female (Kokoro multilingual)
+  sm_speech   Spanish male (Kokoro multilingual)
+
+Supported languages: "en" (default), "es"
 
 Flow:
   1. submit_tts_task()   → queues Kokoro job on fal.ai
@@ -31,12 +35,20 @@ from service.fal_client import FAL_API_BASE, get_fal_headers
 log = get_logger(__name__)
 
 FAL_TTS_MODEL = "fal-ai/kokoro"
-DEFAULT_VOICE = "af_sarah"   # warm American female — works well for lifestyle reels
+
+DEFAULT_VOICES = {
+    "en": "af_sarah",   # American female — warm & conversational
+    "es": "af_speech",   # Spanish female — natural & clear
+}
+
+
+def _get_voice(language: str = "en") -> str:
+    return DEFAULT_VOICES.get(language, DEFAULT_VOICES["en"])
 
 
 # ── 1. Submit ─────────────────────────────────────────────────────────────────
 
-def submit_tts_task(text: str, voice: str = DEFAULT_VOICE) -> dict:
+def submit_tts_task(text: str, voice: str = DEFAULT_VOICES["en"]) -> dict:
     """Queues a Kokoro TTS job on fal.ai and returns task metadata."""
     log.step("submit_tts_task", "IN", voice=voice, text_preview=text[:80])
 
@@ -140,21 +152,33 @@ def download_voiceover(audio_url: str) -> str:
 
 # ── 4. Orchestrator ───────────────────────────────────────────────────────────
 
-def generate_voiceover(script: str, voice: str = DEFAULT_VOICE, cta_text: str = "") -> str:
+def generate_voiceover(
+    script: str,
+    language: str = "en",
+    voice: str = None,
+    cta_text: str = "",
+) -> str:
     """
     Full flow: script → Kokoro TTS → download WAV.
     Returns local path to the voiceover audio file.
 
     Args:
         script    : Main narration text.
-        cta_text  : Optional CTA appended to the end of the audio (e.g.
-                    "Síguenos en @usuario o visita tudominio.com para más").
+        language  : Language code — "en" (default) or "es".
+                    Auto-selects appropriate voice if `voice` not set.
+        voice     : Override voice explicitly (bypasses language auto-select).
+        cta_text  : Optional CTA appended to the end of the audio.
     """
-    log.step("generate_voiceover", "IN", voice=voice, script_preview=script[:80], cta=cta_text[:60] if cta_text else "")
+    resolved_voice = voice or _get_voice(language)
+    log.step(
+        "generate_voiceover", "IN",
+        language=language, voice=resolved_voice,
+        script_preview=script[:80], cta=cta_text[:60] if cta_text else "",
+    )
 
     full_script = f"{script} {cta_text}".strip() if cta_text else script
 
-    task = submit_tts_task(full_script, voice=voice)
+    task = submit_tts_task(full_script, voice=resolved_voice)
     audio_url = poll_tts_task(task)
     local_path = download_voiceover(audio_url)
 
