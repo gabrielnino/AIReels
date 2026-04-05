@@ -7,24 +7,54 @@ log = get_logger(__name__)
 
 
 def run_strategy_engine(topic: str, score: float, reason: str,
-                        angle: str = "", why_now: str = "") -> dict:
+                        angle: str = "", why_now: str = "", language: str = "en") -> dict:
     """
     Given a winning topic, generates a full Instagram Reel content strategy:
       - narrative, hook, emotion, motion_prompt
       - caption, hashtags, cta, cta_url, cta_handle, on_screen_text
       - loop-aware (final line references the hook for seamless replay)
+
+    Args:
+        language: "en" (default) or "es". Controls script and CTA language.
     """
     log.step("run_strategy_engine", "IN", topic=topic, score=score,
-             reason=reason, angle=angle, why_now=why_now)
+             reason=reason, angle=angle, why_now=why_now, language=language)
 
-    system_prompt = (
-        "You are a top-tier Instagram Reels creator with 2M+ followers and a proven track record "
-        "of generating viral content for local lifestyle brands in Vancouver, Canada. "
-        "You know exactly what stops the scroll in the first 2 seconds, how to build tension "
-        "through a 15-second arc, and how to convert views into link-in-bio clicks. "
-        "You write hooks that feel NATIVE to Instagram - not like ads. "
-        "You never use corporate language. You always write like a real person who lives in Vancouver."
-    )
+    # Language-specific instructions
+    if language == "es":
+        language_rules = (
+            "VOICEOVER RULES:\n"
+            "  - Natural, conversational SPANISH — NOT corporate\n"
+            "  - 3-4 short sentences (~35-40 words) for a 15-second reel\n"
+            "  - End with a line that references the hook to create a seamless loop\n"
+        )
+        voiceover_field_desc = (
+            'A punchy Spanish narration script for a 15-second reel. Natural,'
+            ' conversational, NOT corporate. 3-4 short sentences (~35-40 words).'
+            ' End with a line that references the hook to create seamless loop.'
+        )
+        caption_rules_addon = (
+            '  - End with soft CTA: "M\xe1s detalles en el enlace del perfil" o "Link en el perfil"'
+        )
+        cta_url_default = "tudominio.com"
+        cta_handle_default = "@tuusuario"
+    else:
+        language_rules = (
+            "VOICEOVER RULES:\n"
+            "  - Natural, conversational English — NOT corporate\n"
+            "  - 3-4 short sentences (~35-40 words) for a 15-second reel\n"
+            "  - End with a line that references the hook to create a seamless loop\n"
+        )
+        voiceover_field_desc = (
+            "A punchy English narration script for a 15-second reel. Natural,"
+            " conversational, NOT corporate. 3-4 short sentences (~35-40 words)."
+            " End with a line that references the hook to create seamless loop."
+        )
+        caption_rules_addon = (
+            '  - End with soft CTA: "Details in bio" or "Link in bio to explore"'
+        )
+        cta_url_default = "tudominio.com"
+        cta_handle_default = "@tuusuario"
 
     angle_line = f"Visual angle to exploit: {angle}" if angle else ""
     why_now_line = f"Why it's blowing up RIGHT NOW: {why_now}" if why_now else ""
@@ -37,6 +67,7 @@ Virality Score: {score}/10
 Why selected: {reason}
 {angle_line}
 {why_now_line}
+Language: {'Spanish (es)' if language == 'es' else 'English (en)'}
 
 REEL STRUCTURE (strict 15-second arc):
 - 0-3s: PATTERN INTERRUPT hook - bold on-screen text, the scroll-stopper
@@ -45,7 +76,7 @@ REEL STRUCTURE (strict 15-second arc):
 - 12-15s: CTA + LOOP - clear action + line that references the hook for seamless replay
 
 HOOK FORMULAS (choose the best fit for this topic):
-  - "POV: you just discovered [X] in Vancouver"
+  - "POV: you just discovered [X]"
   - "Nobody is talking about [X] but it's actually insane"
   - "Wait until you see [X] - I was shook"
   - "I tried [X] so you don't have to (here's the truth)"
@@ -59,18 +90,14 @@ CAPTION RULES:
   - First line = same energy as the hook (must work without seeing the video)
   - Use line breaks for readability
   - 1-2 emojis max, used strategically not decoratively
-  - End with soft CTA: "Details in bio" or "Link in bio to explore"
+{caption_rules_addon}
   - No hashtags in the caption body - keep them clean
 
 AUDIO DIRECTION:
   - Pick a vibe: trending upbeat pop, lo-fi chill, hype trap, cinematic swell, or viral sound-bite style
   - Match the emotional arc of the reel (builds to the peak moment)
 
-VOICEOVER RULES:
-  - Natural, conversational English - NOT corporate
-  - 3-4 short sentences (~35-40 words) for a 15-second reel
-  - End with a line that references the hook to create a seamless loop
-
+{language_rules}
 Respond STRICTLY with a single valid JSON object. No markdown, no code blocks, no comments.
 {{
   "narrative": "One sentence: the full 15-second emotional arc from first frame to last.",
@@ -79,15 +106,35 @@ Respond STRICTLY with a single valid JSON object. No markdown, no code blocks, n
   "emotion": "The ONE emotion the reel must trigger. Choose: desire / FOMO / surprise / delight / curiosity / nostalgia / pride",
   "motion_prompt": "Cinematic AI video direction. Specify: camera move, pacing, and key visual moment. Under 25 words.",
   "audio_vibe": "One of: upbeat pop / lo-fi chill / hype trap / cinematic swell / viral sound-bite. Add 5 words of mood description.",
-  "voiceover_script": "A punchy English narration script for a 15-second reel. Natural, conversational, NOT corporate. 3-4 short sentences (~35-40 words). End with a line that references the hook to create seamless loop.",
+  "voiceover_script": "{voiceover_field_desc}",
   "caption": "Full Instagram caption. First line is a hook. Use line breaks. 2 emojis max. End with soft CTA to bio link. Max 120 words.",
   "hashtags": ["exactly", "20", "hashtags", "without", "hash", "symbol", "mix", "of", "niche", "geo", "trending"],
   "cta": "On-screen CTA text for seconds 12-15. Ultra-short action. Max 6 words. Example: 'Link in bio' or 'Save this'",
-  "cta_url": "The website URL to promote. Use 'tudominio.com' as placeholder.",
-  "cta_handle": "The social media handle to promote. Use '@tuusuario' as placeholder.",
+  "cta_url": "The website URL to promote. Use '{cta_url_default}' as placeholder.",
+  "cta_handle": "The social media handle to promote. Use '{cta_handle_default}' as placeholder.",
   "on_screen_text": "Mid-reel text overlay (seconds 3-8). The KEY MESSAGE in max 5 words. Use null only if the visual is self-explanatory."
 }}
 """
+
+    # Language-specific system prompt
+    if language == "es":
+        system_prompt = (
+            "Eres un creador de Instagram Reels de primer nivel con 2M+ seguidores y un historial comprobado "
+            "de generar contenido viral para marcas de estilo de vida en ciudades hispanohablantes. "
+            "Sabes exactamente qué detiene el scroll en los primeros 2 segundos, cómo construir tensión "
+            "a lo largo de 15 segundos y cómo convertir vistas en clics al enlace de la biografía. "
+            "Escribes hooks que se sienten NATIVOS de Instagram — no como anuncios. "
+            "Nunca usas lenguaje corporativo. Siempre escribes como una persona real."
+        )
+    else:
+        system_prompt = (
+            "You are a top-tier Instagram Reels creator with 2M+ followers and a proven track record "
+            "of generating viral content for local lifestyle brands in Vancouver, Canada. "
+            "You know exactly what stops the scroll in the first 2 seconds, how to build tension "
+            "through a 15-second arc, and how to convert views into link-in-bio clicks. "
+            "You write hooks that feel NATIVE to Instagram - not like ads. "
+            "You never use corporate language. You always write like a real person who lives in Vancouver."
+        )
 
     log.step("run_strategy_engine", "INFO", message="Calling DeepSeek for strategy generation...")
     response = generate_text(prompt=prompt, model="deepseek-chat", system_prompt=system_prompt)

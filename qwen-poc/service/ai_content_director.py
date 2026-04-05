@@ -60,8 +60,11 @@ def ask_edit(current: str) -> str:
 
 
 # ── STEP 0 — Topic Definition ────────────────────────────────────────────────
-def step0_topic() -> dict:
+def step0_topic(language: str = "en") -> dict:
+    """Step 0 — Topic Definition. Language affects LLM response."""
     banner("STEP 0 — TOPIC DEFINITION")
+
+    lang_instruction = "Response language: Spanish" if language == "es" else "Response language: English"
 
     print(f"\n  {C.DIM}Tell me about your video's purpose. Fill what you can.{C.RESET}\n")
 
@@ -86,6 +89,7 @@ def step0_topic() -> dict:
 
     prompt = f"""
 You are an elite AI Content Director specialized in short-form viral video generation (Reels/TikTok/Shorts).
+{lang_instruction}
 
 USER INPUT:
 - Business goal: {inputs['business_goal']}
@@ -431,11 +435,12 @@ def run_generation(assets: dict) -> None:
     }
 
     topic = assets["selected_topic"]
+    language = assets.get("language", "en")
 
-    print(f"\n  {C.BOLD}Running content engine for:{C.RESET} {topic}")
+    print(f"\n  {C.BOLD}Running content engine for:{C.RESET} {topic} | Language: {language}")
 
     from engine.content_engine import run_content_engine
-    result = run_content_engine(topic, strategy=strategy)
+    result = run_content_engine(topic, strategy=strategy, language=language)
 
     print(f"\n{C.GREEN}{C.BOLD}Generation complete!{C.RESET}")
     print(f"  Final video: {result.get('final_video_path', 'unknown')}")
@@ -460,8 +465,21 @@ def main():
 
     config = load_config()
 
+    # Parse language from CLI or prompt
+    import sys
+    language = "en"
+    if "--language" in sys.argv:
+        idx = sys.argv.index("--language")
+        if idx + 1 < len(sys.argv):
+            language = sys.argv[idx + 1].lower()
+    else:
+        lang_input = input(f"\n  Language (default: en, options: en/es): ").strip().lower()
+        language = lang_input if lang_input == "es" else "en"
+    if language == "es":
+        print(f"  {C.DIM}Modo español activado.{C.RESET}")
+
     # STEP 0: Topic
-    topic_data = step0_topic()
+    topic_data = step0_topic(language)
 
     # STEP 1: Image prompt
     image_prompt = step1_image_prompt(topic_data)
@@ -484,6 +502,7 @@ def main():
     # Merge all assets
     assets = {
         **topic_data,
+        "language": language,
         "image_prompt": image_prompt,
         "style_anchor": style_anchor,
         "motion_prompt": motion_prompt,

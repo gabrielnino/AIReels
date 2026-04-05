@@ -17,12 +17,13 @@ from utils.logger import get_logger
 log = get_logger(__name__)
 
 
-def run_reels_pipeline(execute_content: bool = True):
+def run_reels_pipeline(execute_content: bool = True, language: str = "en"):
     from utils.run_context import get_run_dir
     run_dir = get_run_dir()
     log.info("=" * 44)
     log.info("🚀 STARTED REELS AUTOMATION PIPELINE")
     log.info(f"📁 Run output folder: {run_dir}")
+    log.info(f"🌐 Language: {language}")
     log.info("=" * 44)
 
     init_db()
@@ -68,7 +69,7 @@ def run_reels_pipeline(execute_content: bool = True):
 
     log.step("run_reels_pipeline", "INFO", step="3/4 - Strategy engine (content strategy)")
     strategy = run_strategy_engine(topic, score=score, reason=reason,
-                                   angle=angle, why_now=why_now)
+                                   angle=angle, why_now=why_now, language=language)
 
     log.step("run_reels_pipeline", "INFO",
              message="📋 Content strategy ready",
@@ -119,10 +120,20 @@ def run_reels_pipeline(execute_content: bool = True):
 
 
 if __name__ == "__main__":
+    # Parse --language flag (default: en)
+    language = "en"
+    if "--language" in sys.argv:
+        idx = sys.argv.index("--language")
+        if idx + 1 < len(sys.argv):
+            language = sys.argv[idx + 1].lower()
+            if language not in ("en", "es"):
+                print(f"Unsupported language: {language}. Use 'en' or 'es'.")
+                sys.exit(1)
+
     if "--clear-db" in sys.argv:
         count = clear_database()
         log.info(f"🗑️ Database cleared: {count} topic(s) deleted.")
         if "--no-run" in sys.argv:
             sys.exit(0)
 
-    run_reels_pipeline(execute_content=True)
+    run_reels_pipeline(execute_content=True, language=language)
