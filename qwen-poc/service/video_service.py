@@ -35,7 +35,6 @@ def _get_ffmpeg_path() -> str:
 # ── Scene Generation ─────────────────────────────────────────────────────────
 
 NUM_SCENES = 5
-SCENE_DURATION = 3  # seconds per scene
 
 
 def _generate_scene_descriptions(voiceover_script: str, style_anchor: str = "") -> list[dict]:
@@ -282,23 +281,25 @@ def generate_video(
     Flow:
       1. Split script into 5 scenes via LLM
       2. Generate image per scene via Pollinations
-      3. Ken Burns effect per scene (~3s each)
+      3. Ken Burns effect per scene (duration / NUM_SCENES each)
       4. Concatenate clips into final video
 
     Args:
         img_url: Ignored (generates its own images).
         prompt: Fallback text prompt if script not provided.
         resolution: Video resolution (720P default).
-        duration: Target duration (15s default, auto-calculated from scenes).
-        audio: Ignored (no audio in this step).
+        duration: Target total duration (15s default).
+        audio: Ignored.
         voiceover_script: Script text to drive scene generation.
         style_anchor: Visual style to maintain across scenes.
     """
+    scene_duration = duration // NUM_SCENES
+
     log.step("generate_video", "IN",
              prompt_preview=prompt[:80] if prompt else "",
              resolution=resolution,
              scenes=NUM_SCENES,
-             scene_duration=SCENE_DURATION)
+             scene_duration=scene_duration)
 
     width = int(resolution.lower().split("p")[0]) if resolution.lower().endswith("p") else 720
     height = int(width * 16 / 9)
@@ -315,7 +316,7 @@ def generate_video(
             width=width, height=height,
         )
         clip = _ken_burns_effect(
-            img_path, duration=SCENE_DURATION,
+            img_path, duration=scene_duration,
             width=width, height=height,
             scene_idx=i,
         )
