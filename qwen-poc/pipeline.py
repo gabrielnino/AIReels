@@ -88,7 +88,7 @@ def run_reels_pipeline(execute_content: bool = True, language: str = "en"):
     log.step("run_reels_pipeline", "INFO", step="4/4 - Content engine (generating assets)")
     try:
         start_time = time.time()
-        final_assets = run_content_engine(topic, strategy=strategy)
+        final_assets = run_content_engine(topic, strategy=strategy, language=language)
         elapsed = int(time.time() - start_time)
 
         log.info("=" * 44)

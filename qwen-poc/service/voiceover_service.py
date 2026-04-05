@@ -13,9 +13,8 @@ Available voices (pass as `voice` arg):
   am_michael  American male, friendly & upbeat
   bf_emma     British female, elegant
   bm_george   British male, deep & confident
-  sf_speech   Spanish female (Kokoro multilingual)
-  sm_speech   Spanish male (Kokoro multilingual)
 
+For Spanish, Kokoro v2 multilingual model is used with `es` language parameter.
 Supported languages: "en" (default), "es"
 
 Flow:
@@ -35,10 +34,11 @@ from service.fal_client import FAL_API_BASE, get_fal_headers
 log = get_logger(__name__)
 
 FAL_TTS_MODEL = "fal-ai/kokoro"
+FAL_TTS_MODEL_MULTI = "fal-ai/kokoro/v2"  # multilingual model (en + es)
 
 DEFAULT_VOICES = {
-    "en": "af_sarah",   # American female — warm & conversational
-    "es": "af_speech",   # Spanish female — natural & clear
+    "en": "af_sarah",  # American female — warm & conversational
+    "es": "sf_speech",  # Spanish female — warm & natural (Kokoro v2)
 }
 
 
@@ -48,17 +48,24 @@ def _get_voice(language: str = "en") -> str:
 
 # ── 1. Submit ─────────────────────────────────────────────────────────────────
 
-def submit_tts_task(text: str, voice: str = DEFAULT_VOICES["en"]) -> dict:
-    """Queues a Kokoro TTS job on fal.ai and returns task metadata."""
-    log.step("submit_tts_task", "IN", voice=voice, text_preview=text[:80])
+def submit_tts_task(text: str, voice: str = DEFAULT_VOICES["en"], language: str = "en") -> dict:
+    """Queues a Kokoro TTS job on fal.ai and returns task metadata.
+
+    Uses fal-ai/kokoro for English, fal-ai/kokoro/v2 for other languages.
+    """
+    log.step("submit_tts_task", "IN", voice=voice, language=language, text_preview=text[:80])
+
+    model = FAL_TTS_MODEL_MULTI if language != "en" else FAL_TTS_MODEL
 
     payload = {
         "text": text,
         "voice": voice,
     }
+    if language != "en":
+        payload["language"] = language
 
     response = requests.post(
-        f"{FAL_API_BASE}/{FAL_TTS_MODEL}",
+        f"{FAL_API_BASE}/{model}",
         headers=get_fal_headers(),
         json=payload,
         timeout=30,
@@ -76,7 +83,7 @@ def submit_tts_task(text: str, voice: str = DEFAULT_VOICES["en"]) -> dict:
         "status_url": data.get("status_url"),
         "response_url": data.get("response_url"),
     }
-    log.step("submit_tts_task", "OUT", request_id=request_id, status_url=task["status_url"])
+    log.step("submit_tts_task", "OUT", request_id=request_id, status_url=task["status_url"], model=model)
     return task
 
 
@@ -178,7 +185,7 @@ def generate_voiceover(
 
     full_script = f"{script} {cta_text}".strip() if cta_text else script
 
-    task = submit_tts_task(full_script, voice=resolved_voice)
+    task = submit_tts_task(full_script, voice=resolved_voice, language=language)
     audio_url = poll_tts_task(task)
     local_path = download_voiceover(audio_url)
 
