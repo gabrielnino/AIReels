@@ -6,8 +6,7 @@ from service.llm_service import generate_text
 from service.image_service import generate_image_urls
 from service.video_service import generate_video
 from service.audio_service import mix_voice_and_music
-from service.voiceover_service import generate_voiceover
-from service.subtitle_service import add_subtitles_to_video
+from service.subtitle_service import add_word_by_word_subtitles
 from models.request_models import GenerateImageRequest
 from utils.logger import get_logger
 
@@ -94,14 +93,13 @@ def run_content_engine(selected_topic: str, strategy: dict, language: str = "en"
     """
     Full pipeline:
       1. Expand topic -> image prompt + style anchor
-      2. Generate base image (Flux Dev)
-      3. Generate silent video (Wan i2v) - 15s, style-coherent
-      4a. Generate background music (Google Lyria 3 via OpenRouter, fallback: stable-audio)
-      4b. Generate voiceover with audio CTA (language-aware)
-      4c. Mix voice + music (voice boosted 2x, music at 10%)
-      5. Burn word-by-word subtitles (Alex Hormozi style)
-      6. Append end-card (visual CTA)
-      7. Generate SCRIPT.json + SCRIPT.md
+      2. Generate voiceover
+      3. Generate multi-scene video (5 images × 3s Ken Burns)
+      4. Generate background music (Lyria 3, fallback: silent)
+      5. Mix voice + music
+      6. Burn word-by-word subtitles
+      7. Append end-card (visual CTA)
+      8. Generate SCRIPT.json + SCRIPT.md
 
     Args:
         language: "en" (default) or "es". Controls voice and CTA language.
@@ -114,68 +112,12 @@ def run_content_engine(selected_topic: str, strategy: dict, language: str = "en"
              topic=selected_topic, emotion=strategy.get("emotion"), video_duration=VIDEO_DURATION)
 
     # 1. Visual prompt expansion
-    log.step("run_content_engine", "INFO", step="1/7 - Expanding topic to image prompt + style anchor")
+    log.step("run_content_engine", "INFO", step="1/6 - Expanding topic to image prompt + style anchor")
     prompts = expand_to_prompt(selected_topic, strategy)
     image_prompt = prompts["image_prompt"]
     style_anchor = prompts["style_anchor"]
 
-    # 2. Image generation
-    log.step("run_content_engine", "INFO", step="2/7 - Generating base image", prompt=image_prompt)
-    img_req = GenerateImageRequest(prompt=image_prompt, images=[], n=1)
-    image_urls = generate_image_urls(img_req)
-
-    if not image_urls:
-        log.step("run_content_engine", "ERR", step="2/7", error="Image generation returned no URLs")
-        raise ValueError("Image generation failed to return a URL.")
-
-    base_image_url = image_urls[0]
-    log.step("run_content_engine", "INFO", step="2/7 - Image ready", image_url=base_image_url)
-
-    # 3. Silent video - 15s
-    motion_prompt = build_coherent_motion_prompt(strategy, style_anchor)
-    log.step("run_content_engine", "INFO", step="3/7 - Generating silent video (15s)", motion_prompt=motion_prompt)
-
-    silent_video_path = generate_video(
-        img_url=base_image_url, prompt=motion_prompt, resolution="720P", duration=VIDEO_DURATION, audio=False,
-    )
-
-    # 4a. Background music via Lyria 3 (OpenRouter)
-    audio_prompt = build_audio_prompt(selected_topic, strategy)
-    log.step("run_content_engine", "INFO", step="4a/7 - Generating music with Lyria 3", audio_prompt=audio_prompt[:80])
-
-    music_path = None
-    try:
-        from service.lyria_service import generate_lyria_music, lyria_to_wav
-        music_mp3 = generate_lyria_music(audio_prompt, duration=VIDEO_DURATION)
-        music_wav = music_mp3.replace(".mp3", "_mixed.wav")
-        music_path = lyria_to_wav(music_mp3, music_wav)
-        log.step("run_content_engine", "INFO", music_source="lyria 3", music_path=music_path)
-    except Exception as e:
-        log.step("run_content_engine", "WARN", music_lyria_error=str(e), fallback="stable-audio")
-        try:
-            from service.audio_service import submit_audio_task, poll_audio_task, download_audio
-            music_task = submit_audio_task(audio_prompt, duration=VIDEO_DURATION)
-            music_url = poll_audio_task(music_task)
-            music_path = download_audio(music_url)
-            log.step("run_content_engine", "INFO", music_source="stable-audio (fallback)", music_path=music_path)
-        except Exception as e2:
-            log.step("run_content_engine", "WARN", music_fallback2_error=str(e2), fallback="silent track")
-            # Generate silent audio as final fallback
-            from utils.run_context import get_run_dir
-            import subprocess
-            run_dir = get_run_dir()
-            silent_music = os.path.join(run_dir, "silent_music.wav")
-            subprocess.run([
-                "./ffmpeg", "-y", "-f", "lavfi", "-i",
-                f"anullsrc=r=44100:cl=stereo",
-                "-t", str(VIDEO_DURATION),
-                "-acodec", "pcm_s16le",
-                silent_music,
-            ], check=True, capture_output=True, timeout=30)
-            music_path = silent_music
-            log.step("run_content_engine", "INFO", music_source="silent (no music)", music_path=music_path)
-
-    # 4b. Voiceover with CTA
+    # 2. Generate voiceover FIRST (needed for scene generation)
     voiceover_script = strategy.get("voiceover_script", "")
     if not voiceover_script:
         hook_text_tmp = strategy.get("hook_text", "") or strategy.get("hook", "")
@@ -184,7 +126,6 @@ def run_content_engine(selected_topic: str, strategy: dict, language: str = "en"
     cta_url = strategy.get("cta_url", "tudominio.com")
     cta_handle = strategy.get("cta_handle", "@tuusuario")
 
-    # Language-aware CTA generation
     if language == "es":
         if cta_handle and cta_url:
             cta_voice = f"Síguenos en {cta_handle} y visita {cta_url} para más."
@@ -204,44 +145,81 @@ def run_content_engine(selected_topic: str, strategy: dict, language: str = "en"
         else:
             cta_voice = ""
 
-    log.step("run_content_engine", "INFO", step="4b/7 - Generating voiceover", language=language, cta_voice=cta_voice[:60] if cta_voice else "")
+    log.step("run_content_engine", "INFO", step="2/6 - Generating voiceover", language=language)
+    from service.voiceover_service import generate_voiceover
     voiceover_path = generate_voiceover(script=voiceover_script, language=language, cta_text=cta_voice)
 
-    # 4c. Mix voice + music (voice 2x, music 10%)
-    log.step("run_content_engine", "INFO", step="4c/7 - Mixing voice + music")
+    # 3. Generate multi-scene video from script
+    log.step("run_content_engine", "INFO", step="3/6 - Generating multi-scene video", scenes=5, scene_duration=3)
+    silent_video_path = generate_video(
+        img_url=None,
+        prompt=strategy.get("motion_prompt", "cinematic visual"),
+        resolution="720P",
+        duration=VIDEO_DURATION,
+        voiceover_script=voiceover_script,
+        style_anchor=style_anchor,
+    )
+
+    # 4. Generate music
+    audio_prompt = build_audio_prompt(selected_topic, strategy)
+    motion_prompt = build_coherent_motion_prompt(strategy, style_anchor)
+    log.step("run_content_engine", "INFO", step="4/6 - Generating music", audio_prompt=audio_prompt[:80])
+
+    music_path = None
+    try:
+        from service.lyria_service import generate_lyria_music, lyria_to_wav
+        music_mp3 = generate_lyria_music(audio_prompt, duration=VIDEO_DURATION)
+        music_wav = music_mp3.replace(".mp3", "_mixed.wav")
+        music_path = lyria_to_wav(music_mp3, music_wav)
+        log.step("run_content_engine", "INFO", music_source="lyria 3", music_path=music_path)
+    except Exception as e:
+        log.step("run_content_engine", "WARN", music_lyria_error=str(e), fallback="silent track")
+        from utils.run_context import get_run_dir
+        music_path = os.path.join(get_run_dir(), "silent_music.wav")
+        sp = __import__("subprocess")
+        sp.run([
+            "./ffmpeg", "-y", "-f", "lavfi", "-i",
+            "anullsrc=r=44100:cl=stereo",
+            "-t", str(VIDEO_DURATION),
+            "-acodec", "pcm_s16le",
+            music_path,
+        ], check=True, capture_output=True, timeout=30)
+
+    # 5. Mix voice + music
+    log.step("run_content_engine", "INFO", step="5/6 - Mixing voice + music")
     video_with_audio = mix_voice_and_music(
         video_path=silent_video_path,
         voiceover_path=voiceover_path,
         music_path=music_path,
     )
 
-    # 5. Word-by-word subtitles
+    # 6. Word-by-word subtitles
     from service.subtitle_service import add_word_by_word_subtitles
     hook = strategy.get("hook", "")
     hook_text = strategy.get("hook_text", "")
     on_screen_text = strategy.get("on_screen_text") or ""
     cta = strategy.get("cta", "")
 
-    log.step("run_content_engine", "INFO", step="5/7 - Burning word-by-word subtitles")
+    log.step("run_content_engine", "INFO", step="6/7 - Burning word-by-word subtitles")
     subtitled_path = add_word_by_word_subtitles(
         video_path=video_with_audio, transcript=voiceover_script,
         run_dir=get_run_dir(), duration=VIDEO_DURATION,
     )
 
-    # 6. Append end-card
+    # 7. Append end-card
     from service.endcard_service import add_endcard
-    log.step("run_content_engine", "INFO", step="6/7 - Appending end-card")
+    log.step("run_content_engine", "INFO", step="7/7 - Appending end-card")
     with_endcard = add_endcard(
         video_path=subtitled_path, cta_follow=cta_handle,
         cta_url=cta_url, duration=3.0, run_dir=get_run_dir(),
     )
 
-    # 7. Generate script document
+    # 8. Generate script document
     from service.script_service import generate_script as save_script_file
-    log.step("run_content_engine", "INFO", step="7/7 - Generating script document")
+    log.step("run_content_engine", "INFO", step="8/8 - Generating script document")
     result_data = {
         "topic": selected_topic, "base_prompt": image_prompt, "style_anchor": style_anchor,
-        "image_url": base_image_url, "silent_video_path": silent_video_path,
+        "silent_video_path": silent_video_path,
         "video_with_audio_path": video_with_audio, "final_video_path": with_endcard,
         "audio_prompt": audio_prompt, "motion_prompt": motion_prompt,
         "narrative": strategy.get("narrative"), "hook": hook, "hook_text": hook_text,
@@ -264,7 +242,7 @@ def run_content_engine(selected_topic: str, strategy: dict, language: str = "en"
     shutil.move(with_endcard, final_video_path)
     result_data["final_video_path"] = final_video_path
 
-    log.step("run_content_engine", "INFO", step="7/7 - Final video renamed", final_video_path=final_video_path)
+    log.step("run_content_engine", "INFO", step="8/8 - Final video renamed", final_video_path=final_video_path)
 
     log.step("run_content_engine", "OUT",
              topic=selected_topic, final_video=final_video_path,
