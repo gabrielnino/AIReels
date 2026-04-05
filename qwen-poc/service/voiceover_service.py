@@ -14,7 +14,9 @@ Available voices (pass as `voice` arg):
   bf_emma     British female, elegant
   bm_george   British male, deep & confident
 
-For Spanish, Kokoro v2 multilingual model is used with `es` language parameter.
+For Spanish, the `language` param is sent to kokoro which auto-selects
+an appropriate multilingual voice.
+
 Supported languages: "en" (default), "es"
 
 Flow:
@@ -34,11 +36,10 @@ from service.fal_client import FAL_API_BASE, get_fal_headers
 log = get_logger(__name__)
 
 FAL_TTS_MODEL = "fal-ai/kokoro"
-FAL_TTS_MODEL_MULTI = "fal-ai/kokoro/v2"  # multilingual model (en + es)
 
 DEFAULT_VOICES = {
     "en": "af_sarah",  # American female — warm & conversational
-    "es": "sf_speech",  # Spanish female — warm & natural (Kokoro v2)
+    "es": "af_sarah",   # Kokoro multilingual — same voice name works for Spanish
 }
 
 
@@ -49,13 +50,10 @@ def _get_voice(language: str = "en") -> str:
 # ── 1. Submit ─────────────────────────────────────────────────────────────────
 
 def submit_tts_task(text: str, voice: str = DEFAULT_VOICES["en"], language: str = "en") -> dict:
-    """Queues a Kokoro TTS job on fal.ai and returns task metadata.
-
-    Uses fal-ai/kokoro for English, fal-ai/kokoro/v2 for other languages.
-    """
+    """Queues a Kokoro TTS job on fal.ai and returns task metadata."""
     log.step("submit_tts_task", "IN", voice=voice, language=language, text_preview=text[:80])
 
-    model = FAL_TTS_MODEL_MULTI if language != "en" else FAL_TTS_MODEL
+    model = FAL_TTS_MODEL
 
     payload = {
         "text": text,
@@ -83,7 +81,7 @@ def submit_tts_task(text: str, voice: str = DEFAULT_VOICES["en"], language: str 
         "status_url": data.get("status_url"),
         "response_url": data.get("response_url"),
     }
-    log.step("submit_tts_task", "OUT", request_id=request_id, status_url=task["status_url"], model=model)
+    log.step("submit_tts_task", "OUT", request_id=request_id, model=model)
     return task
 
 
