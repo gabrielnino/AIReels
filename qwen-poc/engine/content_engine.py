@@ -143,6 +143,7 @@ def run_content_engine(selected_topic: str, strategy: dict, language: str = "en"
     audio_prompt = build_audio_prompt(selected_topic, strategy)
     log.step("run_content_engine", "INFO", step="4a/7 - Generating music with Lyria 3", audio_prompt=audio_prompt[:80])
 
+    music_path = None
     try:
         from service.lyria_service import generate_lyria_music, lyria_to_wav
         music_mp3 = generate_lyria_music(audio_prompt, duration=VIDEO_DURATION)
@@ -151,11 +152,28 @@ def run_content_engine(selected_topic: str, strategy: dict, language: str = "en"
         log.step("run_content_engine", "INFO", music_source="lyria 3", music_path=music_path)
     except Exception as e:
         log.step("run_content_engine", "WARN", music_lyria_error=str(e), fallback="stable-audio")
-        from service.audio_service import submit_audio_task, poll_audio_task, download_audio
-        music_task = submit_audio_task(audio_prompt, duration=VIDEO_DURATION)
-        music_url = poll_audio_task(music_task)
-        music_path = download_audio(music_url)
-        log.step("run_content_engine", "INFO", music_source="stable-audio (fallback)", music_path=music_path)
+        try:
+            from service.audio_service import submit_audio_task, poll_audio_task, download_audio
+            music_task = submit_audio_task(audio_prompt, duration=VIDEO_DURATION)
+            music_url = poll_audio_task(music_task)
+            music_path = download_audio(music_url)
+            log.step("run_content_engine", "INFO", music_source="stable-audio (fallback)", music_path=music_path)
+        except Exception as e2:
+            log.step("run_content_engine", "WARN", music_fallback2_error=str(e2), fallback="silent track")
+            # Generate silent audio as final fallback
+            from utils.run_context import get_run_dir
+            import subprocess
+            run_dir = get_run_dir()
+            silent_music = os.path.join(run_dir, "silent_music.wav")
+            subprocess.run([
+                "./ffmpeg", "-y", "-f", "lavfi", "-i",
+                f"anullsrc=r=44100:cl=stereo",
+                "-t", str(VIDEO_DURATION),
+                "-acodec", "pcm_s16le",
+                silent_music,
+            ], check=True, capture_output=True, timeout=30)
+            music_path = silent_music
+            log.step("run_content_engine", "INFO", music_source="silent (no music)", music_path=music_path)
 
     # 4b. Voiceover with CTA
     voiceover_script = strategy.get("voiceover_script", "")

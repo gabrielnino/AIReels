@@ -1,107 +1,82 @@
+"""
+image_service.py
+================
+Generates images for Reels.
+
+Provider: Pollinations AI (free, no API key)
+  - Uses Flux model via polling
+  - Supports custom width/height
+  - URL-based API, no authentication needed
+
+Usage:
+  generate_image_urls(request)  → returns CDN URLs
+  generate_images(request)      → returns local file paths
+"""
+
+import os
 import time
+import uuid
 import requests
 from typing import List
-from dotenv import load_dotenv
 from utils.file_utils import download_image
 from models.request_models import GenerateImageRequest
 from utils.logger import get_logger
-from service.fal_client import FAL_API_BASE, get_fal_headers
 
-load_dotenv()
 log = get_logger(__name__)
 
-FAL_IMAGE_MODEL = "fal-ai/flux/dev"  # Flux Dev — high quality text-to-image ~$0.025/image
+POLLINATIONS_BASE = "https://image.pollinations.ai/prompt"
+
+# Model registry — Pollinations supports multiple models
+MODEL = "flux"  # flux is free and good quality
+
+import urllib.parse
 
 
-def _submit_image_task(prompt: str, n: int = 1, size: str = "1024*1024") -> dict:
-    """Submits an async text-to-image task to fal.ai Flux Dev."""
-    try:
-        width, height = [int(x) for x in size.replace("x", "*").split("*")]
-    except Exception:
-        width, height = 1024, 1024
+def _build_pollinations_url(prompt: str, width: int = 1024, height: int = 1024) -> str:
+    """Builds a direct image URL from Pollinations AI."""
+    encoded_prompt = urllib.parse.quote(prompt)
+    return f"{POLLINATIONS_BASE}/{encoded_prompt}?width={width}&height={height}&model={MODEL}&seed={uuid.uuid4().hex[:8]}"
 
-    log.step("_submit_image_task", "IN", prompt_preview=prompt[:80], n=n, width=width, height=height)
 
-    payload = {
-        "prompt": prompt,
-        "num_images": n,
-        "image_size": {"width": width, "height": height},
-        "num_inference_steps": 28,
-        "guidance_scale": 3.5,
-        "enable_safety_checker": True,
-    }
+def _generate_single_image(prompt: str, width: int = 1024, height: int = 1024) -> str:
+    """Generates a single image and returns the CDN URL."""
+    url = _build_pollinations_url(prompt, width, height)
 
-    response = requests.post(
-        f"{FAL_API_BASE}/{FAL_IMAGE_MODEL}",
-        headers=get_fal_headers(),
-        json=payload,
-        timeout=30,
-    )
+    # Pollinations generates on-demand, so we download immediately to cache the image
+    response = requests.get(url, timeout=120)
     response.raise_for_status()
-    data = response.json()
+    if len(response.content) == 0:
+        raise RuntimeError("Pollinations returned empty content")
 
-    request_id = data.get("request_id")
-    if not request_id:
-        log.step("_submit_image_task", "ERR", error="No request_id in response", response=data)
-        raise RuntimeError(f"No request_id in fal.ai response: {data}")
+    # Save the downloaded image to the run directory
+    from utils.run_context import get_run_dir
+    run_dir = get_run_dir()
+    local_path = os.path.join(run_dir, f"image_{uuid.uuid4().hex[:8]}.jpg")
+    with open(local_path, "wb") as f:
+        f.write(response.content)
 
-    task = {
-        "request_id": request_id,
-        "status_url": data.get("status_url"),
-        "response_url": data.get("response_url"),
-    }
-    log.step("_submit_image_task", "OUT", request_id=request_id, status_url=task["status_url"])
-    return task
-
-
-def _poll_image_task(task: dict, timeout: int = 120, interval: int = 5) -> List[str]:
-    """Polls fal.ai until COMPLETED and returns list of image CDN URLs."""
-    request_id = task["request_id"]
-    status_url = task["status_url"]
-    response_url = task["response_url"]
-
-    log.step("_poll_image_task", "IN", request_id=request_id)
-
-    headers = get_fal_headers()
-    start = time.time()
-    while time.time() - start < timeout:
-        resp = requests.get(status_url, headers=headers, timeout=30)
-        resp.raise_for_status()
-        data = resp.json()
-        status = data.get("status", "UNKNOWN")
-        elapsed = int(time.time() - start)
-        log.step("_poll_image_task", "INFO", request_id=request_id, status=status, elapsed_s=elapsed)
-
-        if status == "COMPLETED":
-            result_resp = requests.get(response_url, headers=headers, timeout=30)
-            result_resp.raise_for_status()
-            result_data = result_resp.json()
-            urls = [img.get("url") for img in result_data.get("images", []) if img.get("url")]
-            log.step("_poll_image_task", "OUT", request_id=request_id, urls_count=len(urls), urls=urls)
-            return urls
-
-        elif status in ("FAILED", "CANCELLED"):
-            log.step("_poll_image_task", "ERR", request_id=request_id, status=status, error=data.get("error"))
-            raise RuntimeError(f"fal.ai image task {status}: {data.get('error', 'No details')}")
-
-        time.sleep(interval)
-
-    raise TimeoutError(f"Image task timed out after {timeout}s. Request ID: {request_id}")
+    log.step("_generate_single_image", "OUT", path=local_path, size_kb=round(len(response.content)/1024))
+    return local_path
 
 
 def generate_image_urls(request_data: GenerateImageRequest) -> List[str]:
-    """Generates images via fal.ai Flux Dev and returns CDN URLs (no download)."""
+    """Generates images via Pollinations AI (Pollinations) and returns CDN URLs."""
     log.step("generate_image_urls", "IN",
              prompt_preview=request_data.prompt[:80],
              n=request_data.n,
              size=request_data.size)
 
-    task = _submit_image_task(
-        prompt=request_data.prompt,
-        n=request_data.n or 1,
-        size=request_data.size or "1024*1024",
-    )
-    urls = _poll_image_task(task)
+    try:
+        width, height = [int(x) for x in (request_data.size or "1024*1024").replace("x", "*").split("*")]
+    except Exception:
+        width, height = 1024, 1024
+
+    urls = []
+    for i in range(request_data.n or 1):
+        url = _generate_single_image(request_data.prompt, width, height)
+        urls.append(url)
+        log.step("generate_image_urls", "INFO", image_idx=i+1, url=url)
+
     log.step("generate_image_urls", "OUT", urls_count=len(urls), urls=urls)
     return urls
 

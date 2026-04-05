@@ -1,6 +1,8 @@
 import os
+from dotenv import load_dotenv
 from utils.logger import get_logger
 
+load_dotenv()
 log = get_logger(__name__)
 
 FAL_API_BASE = "https://queue.fal.run"
