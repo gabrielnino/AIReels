@@ -1,59 +1,98 @@
 """
 voiceover_service.py
 ====================
-Generates a voiceover for a Reel using fal.ai Kokoro TTS.
+Generates a voiceover for a Reel.
 
-Kokoro produces natural-sounding speech in seconds — perfect for
-10-second social media narration.
-
-Available voices (pass as `voice` arg):
-  af_sarah    American female, warm & conversational  ← default English
-  af_bella    American female, expressive & energetic
-  am_adam     American male, authoritative
-  am_michael  American male, friendly & upbeat
-  bf_emma     British female, elegant
-  bm_george   British male, deep & confident
-
-For Spanish, the `language` param is sent to kokoro which auto-selects
-an appropriate multilingual voice.
+TTS providers (auto-detected by priority):
+  1. Edge TTS    — free, no API key, best quality for ES/EN
+                  pip install edge-tts
+                  Voices: es-ES/ es-MX (es), en-US (en)
+  2. Kokoro      — requires FAL_API_KEY (fallback if edge-tts missing)
 
 Supported languages: "en" (default), "es"
 
 Flow:
-  1. submit_tts_task()   → queues Kokoro job on fal.ai
-  2. poll_tts_task()     → waits until COMPLETED, returns CDN audio URL
-  3. download_voiceover() → saves .wav to the run directory
-  4. generate_voiceover() → orchestrates all three steps
+  1. generate_voiceover() → picks best provider & generates audio
+  2. Saved as .wav to the run directory
 """
 
 import os
-import time
 import uuid
+import asyncio
+import tempfile
 import requests
 from utils.logger import get_logger
-from service.fal_client import FAL_API_BASE, get_fal_headers
+from utils.run_context import get_run_dir
 
 log = get_logger(__name__)
 
+# ── Edge TTS voices (free, Microsoft) ─────────────────────────────────────────
+EDGE_VOICES = {
+    "en": "en-US-JennyNeural",   # warm American female
+    "es": "es-MX-DaliaNeural",   # clear Mexican female — great for LatAm
+}
+
+# ── Kokoro voices (fal.ai, requires FAL_API_KEY) ─────────────────────────────
 FAL_TTS_MODEL = "fal-ai/kokoro"
 
-DEFAULT_VOICES = {
-    "en": "af_sarah",  # American female — warm & conversational
-    "es": "af_sarah",   # Kokoro multilingual — same voice name works for Spanish
+KOKORO_VOICES = {
+    "en": "af_sarah",
+    "es": "af_sarah",
 }
 
 
-def _get_voice(language: str = "en") -> str:
-    return DEFAULT_VOICES.get(language, DEFAULT_VOICES["en"])
+# ── Availability check ────────────────────────────────────────────────────────
+
+def _edge_tts_available() -> bool:
+    try:
+        import edge_tts  # noqa: F401
+        return True
+    except ImportError:
+        return False
 
 
-# ── 1. Submit ─────────────────────────────────────────────────────────────────
+def _fal_api_available() -> bool:
+    try:
+        from dotenv import load_dotenv
+        load_dotenv()
+        return bool(os.environ.get("FAL_API_KEY"))
+    except Exception:
+        return False
 
-def submit_tts_task(text: str, voice: str = DEFAULT_VOICES["en"], language: str = "en") -> dict:
-    """Queues a Kokoro TTS job on fal.ai and returns task metadata."""
+
+# ── Edge TTS ──────────────────────────────────────────────────────────────────
+
+def _generate_edge_tts(text: str, language: str = "en") -> str:
+    """Generate speech using Edge TTS (free, no API key). Returns local .wav path."""
+    import edge_tts
+
+    voice = EDGE_VOICES.get(language, EDGE_VOICES["en"])
+    log.step("edge_tts", "IN", voice=voice, text_preview=text[:80])
+
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        rate = "+10%"  # slightly faster for social media
+        communication = edge_tts.Communicate(text, voice, rate=rate)
+
+        run_dir = get_run_dir()
+        filename = os.path.join(run_dir, f"voiceover_{uuid.uuid4()}.wav")
+
+        loop.run_until_complete(communication.save(filename))
+        size_kb = round(os.path.getsize(filename) / 1024)
+        log.step("edge_tts", "OUT", filename=filename, size_kb=size_kb)
+        return filename
+    finally:
+        loop.close()
+
+
+# ── Kokoro (fal.ai) ───────────────────────────────────────────────────────────
+from service.fal_client import FAL_API_BASE, get_fal_headers
+
+
+def _submit_tts_task(text: str, voice: str, language: str = "en") -> dict:
+    """Queues a Kokoro TTS job on fal.ai."""
     log.step("submit_tts_task", "IN", voice=voice, language=language, text_preview=text[:80])
-
-    model = FAL_TTS_MODEL
 
     payload = {
         "text": text,
@@ -63,7 +102,7 @@ def submit_tts_task(text: str, voice: str = DEFAULT_VOICES["en"], language: str 
         payload["language"] = language
 
     response = requests.post(
-        f"{FAL_API_BASE}/{model}",
+        f"{FAL_API_BASE}/{FAL_TTS_MODEL}",
         headers=get_fal_headers(),
         json=payload,
         timeout=30,
@@ -76,70 +115,47 @@ def submit_tts_task(text: str, voice: str = DEFAULT_VOICES["en"], language: str 
         log.step("submit_tts_task", "ERR", error="No request_id in response", response=data)
         raise RuntimeError(f"No request_id in Kokoro TTS response: {data}")
 
-    task = {
+    return {
         "request_id": request_id,
         "status_url": data.get("status_url"),
         "response_url": data.get("response_url"),
     }
-    log.step("submit_tts_task", "OUT", request_id=request_id, model=model)
-    return task
 
 
-# ── 2. Poll ───────────────────────────────────────────────────────────────────
-
-def poll_tts_task(task: dict, timeout: int = 120, interval: int = 3) -> str:
+def _poll_tts_task(task: dict, timeout: int = 120, interval: int = 3) -> str:
     """Polls fal.ai queue until COMPLETED and returns the audio CDN URL."""
-    request_id = task["request_id"]
-    status_url = task["status_url"]
-    response_url = task["response_url"]
-
-    log.step("poll_tts_task", "IN", request_id=request_id)
-
+    import time
     headers = get_fal_headers()
     start = time.time()
     while time.time() - start < timeout:
-        resp = requests.get(status_url, headers=headers, timeout=30)
+        resp = requests.get(task["status_url"], headers=headers, timeout=30)
         resp.raise_for_status()
         data = resp.json()
         status = data.get("status", "UNKNOWN")
         elapsed = int(time.time() - start)
-        log.step("poll_tts_task", "INFO", request_id=request_id, status=status, elapsed_s=elapsed)
+        log.step("poll_tts_task", "INFO", status=status, elapsed_s=elapsed)
 
         if status == "COMPLETED":
-            result_resp = requests.get(response_url, headers=headers, timeout=30)
+            result_resp = requests.get(task["response_url"], headers=headers, timeout=30)
             result_resp.raise_for_status()
             result_data = result_resp.json()
-            # Kokoro returns { "audio": { "url": "..." } }
             audio_url = (
                 result_data.get("audio", {}).get("url")
                 or result_data.get("audio_url")
             )
             if not audio_url:
-                log.step("poll_tts_task", "ERR",
-                         request_id=request_id,
-                         error="COMPLETED but no audio URL found",
-                         result_data=result_data)
                 raise RuntimeError(f"Kokoro TTS completed but no audio URL: {result_data}")
-
-            log.step("poll_tts_task", "OUT", request_id=request_id, audio_url=audio_url)
+            log.step("poll_tts_task", "OUT", audio_url=audio_url)
             return audio_url
-
         elif status in ("FAILED", "CANCELLED"):
-            log.step("poll_tts_task", "ERR", request_id=request_id, status=status, error=data.get("error"))
             raise RuntimeError(f"Kokoro TTS task {status}: {data.get('error', 'No details')}")
 
         time.sleep(interval)
+    raise TimeoutError(f"TTS task timed out after {timeout}s.")
 
-    raise TimeoutError(f"TTS task timed out after {timeout}s. Request ID: {request_id}")
 
-
-# ── 3. Download ───────────────────────────────────────────────────────────────
-
-def download_voiceover(audio_url: str) -> str:
-    """Downloads the voiceover WAV and saves it to the current run directory."""
-    from utils.run_context import get_run_dir
-    log.step("download_voiceover", "IN", audio_url=audio_url)
-
+def _download_audio(audio_url: str) -> str:
+    """Downloads audio from a URL and saves it as .wav to the run directory."""
     run_dir = get_run_dir()
     ext = ".mp3" if ".mp3" in audio_url else ".wav"
     filename = os.path.join(run_dir, f"voiceover_{uuid.uuid4()}{ext}")
@@ -155,37 +171,66 @@ def download_voiceover(audio_url: str) -> str:
     return filename
 
 
-# ── 4. Orchestrator ───────────────────────────────────────────────────────────
+def _generate_kokoro(script: str, language: str = "en", voice: str = None) -> str:
+    """Generate speech using Kokoro on fal.ai."""
+    resolved_voice = voice or KOKORO_VOICES.get(language, KOKORO_VOICES["en"])
+    log.step("generate_voiceover", "IN", provider="kokoro", language=language, voice=resolved_voice)
+
+    task = _submit_tts_task(script, voice=resolved_voice, language=language)
+    audio_url = _poll_tts_task(task)
+    return _download_audio(audio_url)
+
+
+# ── Orchestrator ──────────────────────────────────────────────────────────────
 
 def generate_voiceover(
     script: str,
     language: str = "en",
     voice: str = None,
     cta_text: str = "",
+    provider: str = None,  # "edge" or "kokoro" — auto-detect if None
 ) -> str:
     """
-    Full flow: script → Kokoro TTS → download WAV.
-    Returns local path to the voiceover audio file.
+    Full flow: script → TTS → .wav file.
+
+    Provider priority:
+      1. Edge TTS (if edge-tts is installed via pip)
+      2. Kokoro on fal.ai (if FAL_API_KEY is set)
 
     Args:
         script    : Main narration text.
-        language  : Language code — "en" (default) or "es".
-                    Auto-selects appropriate voice if `voice` not set.
-        voice     : Override voice explicitly (bypasses language auto-select).
-        cta_text  : Optional CTA appended to the end of the audio.
+        language  : "en" (default) or "es".
+        voice     : Override voice explicitly.
+        cta_text  : Optional CTA appended at the end.
+        provider  : Force "edge" or "kokoro", auto-detects if None.
     """
-    resolved_voice = voice or _get_voice(language)
-    log.step(
-        "generate_voiceover", "IN",
-        language=language, voice=resolved_voice,
-        script_preview=script[:80], cta=cta_text[:60] if cta_text else "",
-    )
-
     full_script = f"{script} {cta_text}".strip() if cta_text else script
 
-    task = submit_tts_task(full_script, voice=resolved_voice, language=language)
-    audio_url = poll_tts_task(task)
-    local_path = download_voiceover(audio_url)
+    log.step(
+        "generate_voiceover", "IN",
+        language=language, script_preview=full_script[:80],
+        cta=cta_text[:60] if cta_text else "",
+    )
 
-    log.step("generate_voiceover", "OUT", local_path=local_path)
-    return local_path
+    # Auto-detect provider
+    if provider is None:
+        if _edge_tts_available():
+            provider = "edge"
+        elif _fal_api_available():
+            provider = "kokoro"
+        else:
+            raise RuntimeError(
+                "No TTS provider available.\n"
+                "Options:\n"
+                "  1. Install Edge TTS (free): pip install edge-tts\n"
+                "  2. Set FAL_API_KEY for Kokoro (fal.ai)"
+            )
+
+    log.step("generate_voiceover", "INFO", provider=provider)
+
+    if provider == "edge":
+        return _generate_edge_tts(full_script, language=language)
+    elif provider == "kokoro":
+        return _generate_kokoro(full_script, language=language, voice=voice)
+    else:
+        raise ValueError(f"Unknown provider: {provider}")
