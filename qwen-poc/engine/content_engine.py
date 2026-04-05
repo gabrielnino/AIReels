@@ -3,11 +3,9 @@ import re
 import shutil
 
 from service.llm_service import generate_text
-from service.image_service import generate_image_urls
 from service.video_service import generate_video
 from service.audio_service import mix_voice_and_music
 from service.subtitle_service import add_word_by_word_subtitles
-from models.request_models import GenerateImageRequest
 from utils.logger import get_logger
 
 log = get_logger(__name__)
@@ -69,7 +67,7 @@ def build_coherent_motion_prompt(strategy: dict, style_anchor: str) -> str:
     return f"{base_motion}. Maintain visual style: {style_anchor}"
 
 
-def build_audio_prompt(topic: str, strategy: dict) -> str:
+def build_audio_prompt(strategy: dict) -> str:
     emotion = strategy.get("emotion", "energetic")
     audio_vibe = strategy.get("audio_vibe", "")
 
@@ -161,7 +159,7 @@ def run_content_engine(selected_topic: str, strategy: dict, language: str = "en"
     )
 
     # 4. Generate music
-    audio_prompt = build_audio_prompt(selected_topic, strategy)
+    audio_prompt = build_audio_prompt(strategy)
     motion_prompt = build_coherent_motion_prompt(strategy, style_anchor)
     log.step("run_content_engine", "INFO", step="4/6 - Generating music", audio_prompt=audio_prompt[:80])
 

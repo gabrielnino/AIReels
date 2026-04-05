@@ -137,6 +137,7 @@ Respond ONLY with a valid JSON array. No markdown, no code blocks, no comments.
 
     try:
         topics = json.loads(clean_llm_json(response))
+
         # Normalise: accept both plain strings (legacy) and dicts
         normalised = []
         for t in topics:

@@ -19,7 +19,6 @@ Flow:
 import os
 import uuid
 import asyncio
-import tempfile
 import requests
 from utils.logger import get_logger
 from utils.run_context import get_run_dir
@@ -62,11 +61,11 @@ def _fal_api_available() -> bool:
 
 # ── Edge TTS ──────────────────────────────────────────────────────────────────
 
-def _generate_edge_tts(text: str, language: str = "en") -> str:
+def _generate_edge_tts(text: str, language: str = "en", voice: str = None) -> str:
     """Generate speech using Edge TTS (free, no API key). Returns local .wav path."""
     import edge_tts
 
-    voice = EDGE_VOICES.get(language, EDGE_VOICES["en"])
+    voice = voice or EDGE_VOICES.get(language, EDGE_VOICES["en"])
     log.step("edge_tts", "IN", voice=voice, text_preview=text[:80])
 
     loop = asyncio.new_event_loop()

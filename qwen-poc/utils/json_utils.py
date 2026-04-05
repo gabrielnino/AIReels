@@ -3,7 +3,7 @@ import re
 
 def strip_json_fences(text: str) -> str:
     """Strips markdown code fences and surrounding text from LLM JSON responses.
-    Returns only the first top-level JSON object found."""
+    Returns the first top-level JSON object or array found."""
     text = text.strip()
 
     # Find first ```json or ``` block
@@ -14,22 +14,43 @@ def strip_json_fences(text: str) -> str:
         if end != -1:
             content = content[:end]
     else:
-        # No code fence — try to extract first JSON object from raw text
         content = text
 
-    # Extract only the first top-level JSON object
-    # Find the first '{' and match its closing '}' respecting nesting
-    depth = 0
-    start = None
+    # Find the first JSON delimiter ({ or [) by scanning for whichever comes first
+    first_obj = None  # (char_type, start, content)
+    first_arr = None
     for i, ch in enumerate(content):
         if ch == '{':
-            if depth == 0:
-                start = i
-            depth += 1
-        elif ch == '}':
-            depth -= 1
-            if depth == 0 and start is not None:
-                return content[start:i+1].strip()
+            if first_obj is None:
+                first_obj = i
+            break
+        elif ch == '[':
+            if first_arr is None:
+                first_arr = i
+            break
+
+    # Process whichever comes first (or the only one found)
+    start = None
+    if first_obj is not None and (first_arr is None or first_obj < first_arr):
+        depth = 0
+        for i, ch in enumerate(content[first_obj:], first_obj):
+            if ch == '{':
+                depth += 1
+            elif ch == '}':
+                depth -= 1
+                if depth == 0:
+                    return content[first_obj:i+1].strip()
+        return content[first_obj:].strip()
+    elif first_arr is not None:
+        depth = 0
+        for i, ch in enumerate(content[first_arr:], first_arr):
+            if ch == '[':
+                depth += 1
+            elif ch == ']':
+                depth -= 1
+                if depth == 0:
+                    return content[first_arr:i+1].strip()
+        return content[first_arr:].strip()
 
     return content.strip()
 
