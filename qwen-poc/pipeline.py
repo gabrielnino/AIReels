@@ -109,6 +109,19 @@ def run_reels_pipeline(execute_content: bool = True, language: str = "en"):
                  hashtags=final_assets.get("hashtags", []))
         log.info("=" * 44)
 
+        # Upload to Instagram (if token is configured)
+        try:
+            log.step("run_reels_pipeline", "INFO", step="5/5 - Uploading to Instagram")
+            from service.instagram_service import upload_reel_to_instagram
+            ig_id = upload_reel_to_instagram(
+                video_path=final_assets["final_video_path"],
+                caption=final_assets.get("caption", ""),
+                hashtags=final_assets.get("hashtags", []),
+            )
+            log.step("run_reels_pipeline", "OUT", message="Instagram upload complete", ig_media_id=ig_id)
+        except Exception as e:
+            log.step("run_reels_pipeline", "WARN", ig_upload_error=str(e))
+
         update_topic_status(topic, "published")
 
     except Exception as e:
