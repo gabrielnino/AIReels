@@ -17,6 +17,7 @@ log = get_logger(__name__)
 
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(__file__))
 FFMPEG_BIN = os.path.join(_PROJECT_ROOT, "ffmpeg")
+AVATAR_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "resources", "avatarWhatapp.png")
 
 _FONT_CANDIDATES = [
     os.path.join(_PROJECT_ROOT, "assets", "fonts", "Roboto-Bold.ttf"),
@@ -200,20 +201,42 @@ def add_word_by_word_subtitles(
     # Escape path for FFmpeg filter
     ass_escaped = ass_path.replace("\\", "/").replace(":", "\\:")
     fontsdir_arg = f":fontsdir='{os.path.dirname(font_path)}'" if font_path else ""
+    ass_filter = f"ass='{ass_escaped}'{fontsdir_arg}"
 
-    vf = f"ass='{ass_escaped}'{fontsdir_arg}"
-    cmd = [
-        FFMPEG_BIN,
-        "-y",
-        "-i", video_path,
-        "-vf", vf,
-        "-c:v", "libx264",
-        "-preset", "fast",
-        "-crf", "20",
-        "-c:a", "copy",
-        "-movflags", "+faststart",
-        out_path,
-    ]
+    # Avatar watermark: burn subtitles + overlay image at bottom-right
+    if os.path.isfile(AVATAR_PATH):
+        filter_complex = (
+            f"[0:v]{ass_filter}[subbed];"
+            f"[subbed][1:v]overlay=W-w-30:H-h-30[outv]"
+        )
+        cmd = [
+            FFMPEG_BIN,
+            "-y",
+            "-i", video_path,
+            "-i", AVATAR_PATH,
+            "-filter_complex", filter_complex,
+            "-map", "[outv]",
+            "-map", "0:a",
+            "-c:v", "libx264",
+            "-preset", "fast",
+            "-crf", "20",
+            "-c:a", "copy",
+            "-movflags", "+faststart",
+            out_path,
+        ]
+    else:
+        cmd = [
+            FFMPEG_BIN,
+            "-y",
+            "-i", video_path,
+            "-vf", ass_filter,
+            "-c:v", "libx264",
+            "-preset", "fast",
+            "-crf", "20",
+            "-c:a", "copy",
+            "-movflags", "+faststart",
+            out_path,
+        ]
 
     log.step("add_word_by_word_subtitles", "INFO", cmd=" ".join(cmd))
     result = subprocess.run(cmd, capture_output=True, text=True)
