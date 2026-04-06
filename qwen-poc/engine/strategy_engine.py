@@ -27,17 +27,19 @@ def run_strategy_engine(topic: str, score: float, reason: str,
             "  - Natural, conversational SPANISH — NOT corporate\n"
             "  - 3-4 short sentences (~35-40 words) for a 15-second reel\n"
             "  - End with a line that references the hook to create a seamless loop\n"
+            "  - DO NOT include any social media handle or CTA in the script\n"
         )
         voiceover_field_desc = (
             'A punchy Spanish narration script for a 15-second reel. Natural,'
             ' conversational, NOT corporate. 3-4 short sentences (~35-40 words).'
             ' End with a line that references the hook to create seamless loop.'
+            ' DO NOT include social handles or CTAs.'
         )
         caption_rules_addon = (
             '  - End with soft CTA: "M\xe1s detalles en el enlace del perfil" o "Link en el perfil"'
         )
-        cta_url_default = "tudominio.com"
-        cta_handle_default = "@tuusuario"
+        cta_url_default = "fiestacotoday.com"
+        cta_handle_default = "@fiestacotoday"
     else:
         language_rules = (
             "VOICEOVER RULES:\n"
@@ -53,8 +55,8 @@ def run_strategy_engine(topic: str, score: float, reason: str,
         caption_rules_addon = (
             '  - End with soft CTA: "Details in bio" or "Link in bio to explore"'
         )
-        cta_url_default = "tudominio.com"
-        cta_handle_default = "@tuusuario"
+        cta_url_default = "fiestacotoday.com"
+        cta_handle_default = "@fiestacotoday"
 
     angle_line = f"Visual angle to exploit: {angle}" if angle else ""
     why_now_line = f"Why it's blowing up RIGHT NOW: {why_now}" if why_now else ""
@@ -120,7 +122,8 @@ Respond STRICTLY with a single valid JSON object. No markdown, no code blocks, n
     if language == "es":
         system_prompt = (
             "Eres un creador de Instagram Reels de primer nivel con 2M+ seguidores y un historial comprobado "
-            "de generar contenido viral para marcas de estilo de vida en ciudades hispanohablantes. "
+            "de generar contenido viral para Fiesta Aco, marca de kits de tacos mexicanos auténticos. "
+            "La fiesta es AHORA — con amigos, celebrando con tacos reales. "
             "Sabes exactamente qué detiene el scroll en los primeros 2 segundos, cómo construir tensión "
             "a lo largo de 15 segundos y cómo convertir vistas en clics al enlace de la biografía. "
             "Escribes hooks que se sienten NATIVOS de Instagram — no como anuncios. "
@@ -129,7 +132,8 @@ Respond STRICTLY with a single valid JSON object. No markdown, no code blocks, n
     else:
         system_prompt = (
             "You are a top-tier Instagram Reels creator with 2M+ followers and a proven track record "
-            "of generating viral content for local lifestyle brands in Vancouver, Canada. "
+            "of generating viral content for Fiesta Aco, a brand selling authentic Mexican taco kits. "
+            "The fiesta is NOW — with friends, celebrating real tacos. "
             "You know exactly what stops the scroll in the first 2 seconds, how to build tension "
             "through a 15-second arc, and how to convert views into link-in-bio clicks. "
             "You write hooks that feel NATIVE to Instagram - not like ads. "
@@ -171,8 +175,8 @@ Respond STRICTLY with a single valid JSON object. No markdown, no code blocks, n
                          "604", "explorebc", "vancouverevents", "instyvr",
                          "vancouverthings", "bclife"],
             "cta": "Link in bio",
-            "cta_url": "tudominio.com",
-            "cta_handle": "@tuusuario",
+            "cta_url": "fiestaco.today",
+            "cta_handle": "@fiestacotoday",
             "on_screen_text": None,
         }
         log.step("run_strategy_engine", "INFO", message="Using fallback strategy", fallback=fallback)

@@ -99,7 +99,6 @@ def run_reels_pipeline(execute_content: bool = True, language: str = "en"):
                  emotion=final_assets["emotion"],
                  image_prompt=final_assets["base_prompt"],
                  style_anchor=final_assets["style_anchor"],
-                 image_url=final_assets["image_url"],
                  silent_video_path=final_assets["silent_video_path"],
                  audio_prompt=final_assets["audio_prompt"],
                  video_with_audio=final_assets["video_with_audio_path"],

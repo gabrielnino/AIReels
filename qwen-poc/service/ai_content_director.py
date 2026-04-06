@@ -367,18 +367,18 @@ def step6_cta(existing_config: dict | None = None) -> dict:
     step_label("STEP 6", "CTA (CONFIGURABLE)")
 
     if existing_config:
-        default_handle = existing_config.get("cta_handle", "@aireels")
-        default_url = existing_config.get("cta_url", "aireels.com")
+        default_handle = existing_config.get("cta_handle", "@fiestacotoday")
+        default_url = existing_config.get("cta_url", "fiestaco.today")
     else:
-        default_handle = "@aireels"
-        default_url = "aireels.com"
+        default_handle = "@fiestacotoday"
+        default_url = "fiestaco.today"
 
     print(f"  {C.DIM}Configure your CTA details.{C.RESET}\n")
 
     cta_handle = input(f"  cta_handle (default: {default_handle}): ").strip() or default_handle
     cta_url = input(f"  cta_url (default: {default_url}): ").strip() or default_url
 
-    cta_voice = f"Siguenos en {cta_handle} y visita {cta_url} para mas."
+    cta_voice = "Síguenos en Fiesta Co Today"
     show_output("cta_handle", cta_handle)
     show_output("cta_url", cta_url)
     show_output("cta_voice", cta_voice)

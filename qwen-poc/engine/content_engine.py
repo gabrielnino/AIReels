@@ -121,18 +121,17 @@ def run_content_engine(selected_topic: str, strategy: dict, language: str = "en"
         hook_text_tmp = strategy.get("hook_text", "") or strategy.get("hook", "")
         voiceover_script = f"{hook_text_tmp} Check the link in bio for details."
 
-    cta_url = strategy.get("cta_url", "tudominio.com")
-    cta_handle = strategy.get("cta_handle", "@tuusuario")
+    cta_url = strategy.get("cta_url", "fiestacotoday.com")
+    cta_handle = strategy.get("cta_handle", "@fiestacotoday")
 
+    # Strip any existing CTA from script end to avoid duplication, then re-add cleanly
     if language == "es":
-        if cta_handle and cta_url:
-            cta_voice = f"Síguenos en {cta_handle} y visita {cta_url} para más."
-        elif cta_handle:
-            cta_voice = f"Síguenos en {cta_handle} para más contenido así."
-        elif cta_url:
-            cta_voice = f"Visita {cta_url} para más contenido."
-        else:
-            cta_voice = ""
+        while voiceover_script.strip().endswith("Síguenos en @fiestacotoday"):
+            voiceover_script = voiceover_script.strip().replace("Síguenos en @fiestacotoday", "").rstrip(". ").strip()
+        while voiceover_script.strip().endswith("Síguenos en " + cta_handle):
+            voiceover_script = voiceover_script.strip().replace("Síguenos en " + cta_handle, "").rstrip(". ").strip()
+        # Clean pronunciation for TTS — no @, natural spacing
+        cta_voice = "Síguenos en Fiesta Co Today"
     else:
         if cta_handle and cta_url:
             cta_voice = f"Follow {cta_handle} and visit {cta_url} for more."
@@ -233,14 +232,25 @@ def run_content_engine(selected_topic: str, strategy: dict, language: str = "en"
     except Exception as e:
         log.step("run_content_engine", "WARN", script_error=str(e))
 
-    # Rename final video
+    # 9. Move final reel to its own subfolder
     slug = re.sub(r"[^\w\s-]", "", selected_topic.lower())
     slug = re.sub(r"[\s]+", "_", slug.strip())[:50]
-    final_video_path = os.path.join(get_run_dir(), f"REEL_{slug}.mp4")
+    reel_dir = os.path.join(get_run_dir(), "reel")
+    os.makedirs(reel_dir, exist_ok=True)
+    final_video_path = os.path.join(reel_dir, f"REEL_{slug}.mp4")
     shutil.move(with_endcard, final_video_path)
     result_data["final_video_path"] = final_video_path
 
-    log.step("run_content_engine", "INFO", step="8/8 - Final video renamed", final_video_path=final_video_path)
+    # Move script documents to reel folder too
+    try:
+        for name in ("SCRIPT.json", "SCRIPT.md"):
+            src = os.path.join(get_run_dir(), name)
+            if os.path.exists(src):
+                shutil.move(src, os.path.join(reel_dir, name))
+    except Exception as e:
+        log.step("run_content_engine", "WARN", script_move_error=str(e))
+
+    log.step("run_content_engine", "INFO", step="9/9 - Final reel saved", reel_dir=reel_dir)
 
     log.step("run_content_engine", "OUT",
              topic=selected_topic, final_video=final_video_path,
