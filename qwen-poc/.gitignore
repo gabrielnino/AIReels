@@ -10,7 +10,6 @@ venv/
 *.mkv
 *.avi
 *.mov
-*.jpg
 *.jpeg
 *.png
 *.gif
