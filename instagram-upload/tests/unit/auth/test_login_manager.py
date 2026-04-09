@@ -10,7 +10,7 @@ import os
 from unittest.mock import Mock, patch, AsyncMock
 from datetime import datetime, timedelta
 
-from instagram-upload.src.auth.login_manager import (
+from src.auth.login_manager import (
     InstagramLoginManager,
     LoginCredentials,
     TwoFactorCode,
@@ -156,7 +156,7 @@ class TestInstagramLoginManager:
                 code = manager._get_two_factor_code_from_user()
                 assert code == '123456'
 
-    @pnotice_fn.argsyncio
+    @pytest.mark.asyncio
     async def test_get_two_factor_code_non_interactive_missing(self):
         """Test getting 2FA code in non-interactive mode without env var."""
         manager = InstagramLoginManager()
@@ -205,7 +205,7 @@ class TestInstagramLoginManager:
             mock_context = AsyncMock()
             mock_page = AsyncMock()
 
-            with patch('instagram-upload.src.auth.login_manager.async_playwright') as mock_playwright:
+            with patch('src.auth.login_manager.async_playwright') as mock_playwright:
                 mock_p = AsyncMock()
                 mock_playwright.return_value.__aenter__ = AsyncMock(return_value=mock_p)
 
@@ -253,7 +253,7 @@ class TestInstagramLoginManager:
             mock_context = AsyncMock()
             mock_page = AsyncMock()
 
-            with patch('instagram-upload.src.auth.login_manager.async_playwright') as mock_playwright:
+            with patch('src.auth.login_manager.async_playwright') as mock_playwright:
                 mock_p = AsyncMock()
                 mock_playwright.return_value.__aenter__ = AsyncMock(return_value=mock_p)
 
