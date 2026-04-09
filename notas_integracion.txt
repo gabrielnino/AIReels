@@ -1,0 +1,206 @@
+# 📝 ANÁLISIS DE INTEGRACIÓN - SPRINT 3
+**Fecha:** 2026-04-08
+**Por:** Sam Lead Developer
+**Objetivo:** Conectar qwen-poc (generación) con instagram-upload (upload)
+
+---
+
+## 🔍 **DATOS DE SALIDA DE `qwen-poc/pipeline.py`**
+
+### **Estructura de `final_assets` (líneas 96-109):**
+```python
+final_assets = {
+    "topic": str,                    # Tópico principal
+    "emotion": str,                  # Emoción objetivo
+    "base_prompt": str,              # Prompt para imágenes
+    "style_anchor": str,             # Estilo de referencia
+    "silent_video_path": str,        # Ruta a video sin audio
+    "audio_prompt": str,             # Prompt para audio
+    "video_with_audio_path": str,    # Ruta a video con audio
+    "final_video_path": str,         # Ruta a video final (con marca de agua)
+    "cta": str,                      # Call to action
+    "on_screen_text": str,           # Texto en pantalla
+    "caption": str,                  # Caption para Instagram (puede ser "")
+    "hashtags": list[str]            # Lista de hashtags
+}
+```
+
+### **Uso actual en Instagram upload (líneas 116-120):**
+```python
+upload_reel_to_instagram(
+    video_path=final_assets["final_video_path"],  # Solo usa este
+    caption=final_assets.get("caption", ""),      # Caption (puede estar vacío)
+    hashtags=final_assets.get("hashtags", []),    # Hashtags
+)
+```
+
+**Observación:** Solo usa 3 campos de los 12 disponibles.
+
+---
+
+## 🔍 **DATOS DE ENTRADA DE `instagram-upload/src/upload/`**
+
+Necesito revisar los módulos de upload para entender qué metadata necesitan:
+
+### **`video_uploader.py` (upload principal):**
+- Necesita: `video_path`, metadata para UI automation
+- Posiblemente: caption, location, etc.
+
+### **`metadata_handler.py` (manejo de metadata):**
+- Debe manejar: caption, hashtags, ubicación, etc.
+
+### **`publisher.py` (confirmación publicación):**
+- Confirmación final, posiblemente más metadata.
+
+---
+
+## 🔄 **PUNTOS DE INTEGRACIÓN IDENTIFICADOS**
+
+### **1. Formato de metadata**
+**Problema:** qwen-poc produce dict con 12 campos, instagram-upload ¿cuántos necesita?
+**Solución:** Adaptador que extrae campos relevantes.
+
+### **2. Path de video**
+**qwen-poc:** `final_assets["final_video_path"]`
+**instagram-upload:** ¿Mismo formato? ¿Paths absolutos/relativos?
+
+### **3. Caption y hashtags**
+**qwen-poc:** Campos separados (`caption`, `hashtags`)
+**instagram-upload:** ¿Unificado o separado?
+
+### **4. Metadata adicional**
+**Pregunta:** ¿Usamos `emotion`, `cta`, `on_screen_text` para algo?
+**Opción A:** Ignorar (solo caption/hashtags)
+**Opción B:** Incorporar en caption o metadata extendida
+
+---
+
+## 🏗️ **OPCIONES DE ARQUITECTURA (B2)**
+
+### **Opción 1: Reemplazar completamente**
+- Eliminar `instagram_service.py` de qwen-poc
+- Usar solo `instagram-upload/` modules
+- **Ventaja:** Un solo sistema, consistencia
+- **Desventaja:** Perder Graph API benefits
+
+### **Opción 2: Sistema híbrido (RECOMENDADO)**
+- Mantener ambos sistemas
+- Elegir según disponibilidad token/contexto
+- **Ventaja:** Resiliencia, flexibilidad
+- **Desventaja:** Complejidad, mantenimiento doble
+
+### **Opción 3: Adaptador abstracto**
+- Crear interface común `InstagramUploader`
+- Implementaciones: `GraphAPIUploader`, `PlaywrightUploader`
+- **Ventaja:** Limpio, extensible
+- **Desventaja:** Más trabajo inicial
+
+---
+
+## 📋 **ACCIONES INMEDIATAS PARA S3-T1**
+
+### **Paso 1: Definir interface común**
+```python
+class InstagramUploader(ABC):
+    @abstractmethod
+    def upload_video(self, video_path: str, metadata: VideoMetadata) -> UploadResult:
+        pass
+
+class VideoMetadata:
+    caption: str
+    hashtags: List[str]
+    location: Optional[str]
+    # ... otros campos según necesidad
+```
+
+### **Paso 2: Crear adaptador de qwen-poc output**
+```python
+def adapt_qwen_to_upload(final_assets: dict) -> VideoMetadata:
+    """Convierte output de qwen-poc a formato de uploader"""
+    return VideoMetadata(
+        caption=final_assets.get("caption", ""),
+        hashtags=final_assets.get("hashtags", []),
+        # Mapear otros campos si es necesario
+    )
+```
+
+### **Paso 3: Implementar bridge**
+```python
+class PipelineBridge:
+    def __init__(self, uploader: InstagramUploader):
+        self.uploader = uploader
+
+    def process_and_upload(self, final_assets: dict) -> UploadResult:
+        metadata = adapt_qwen_to_upload(final_assets)
+        return self.uploader.upload_video(
+            video_path=final_assets["final_video_path"],
+            metadata=metadata
+        )
+```
+
+---
+
+## 🚨 **DEPENDENCIAS CRÍTICAS**
+
+### **1. Decisión B2** (ARQUITECTURA)
+- Necesaria antes de implementar S3-T1
+- Define toda la arquitectura de upload
+- Reunión urgente requerida
+
+### **2. Bloqueo B1** (TESTING)
+- Necesario para validar implementación
+- Taylor QA Engineer debe resolver
+- Impacta S3-T6 (testing)
+
+### **3. Documentación formatos** (S3-T3)
+- Jordan debe documentar formatos exactos
+- Necesario para implementar adaptador
+
+---
+
+## ⏳ **CRONOGRAMA REVISADO**
+
+### **Día 1 (Hoy):**
+- [x] Análisis inicial (COMPLETADO)
+- [ ] Decisión B2 (URGENTE)
+- [ ] Interface común definida
+- [ ] Documentación formatos iniciada
+
+### **Día 2:**
+- [ ] Implementar adaptador básico
+- [ ] Resolver B1 (dependencias)
+- [ ] Tests básicos de adaptador
+
+### **Día 3:**
+- [ ] Implementar bridge según decisión B2
+- [ ] Integración con pipeline existente
+- [ ] Tests de integración
+
+### **Día 4:**
+- [ ] Sistema de colas básico (S3-T4)
+- [ ] Dashboard simple (S3-T5)
+- [ ] Testing exhaustivo
+
+### **Día 5:**
+- [ ] Integración final
+- [ ] Demo end-to-end
+- [ ] Documentación completa
+
+---
+
+## ❓ **PREGUNTAS ABIERTAS**
+
+1. **¿`final_video_path` es absoluto o relativo?**
+2. **¿El caption de qwen-poc incluye hashtags o están separados?** (línea 108 vs 109)
+3. **¿Qué otros campos de metadata son útiles para upload?**
+4. **¿El sistema debe manejar fallos en generación de video?**
+5. **¿Paths entre sistemas (qwen-poc/outputs/ vs instagram-upload/videos/)?**
+
+---
+
+## 📞 **PRÓXIMOS PASOS**
+
+1. **Reunión B2** con Alex Technical Architect (URGENTE)
+2. **Taylor** trabaja en B1 (dependencias testing)
+3. **Jordan** documenta formatos exactos (S3-T3)
+4. **Sam** define interface basada en decisión B2
