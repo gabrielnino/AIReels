@@ -224,22 +224,29 @@ class TestInstagramLoginManager:
                 mock_browser.new_context = AsyncMock(return_value=mock_context)
                 mock_context.new_page = AsyncMock(return_value=mock_page)
 
-                # Mock cookie loading
-                with patch('builtins.open'):
-                    with patch('json.load', return_value=[{'name': 'cookie', 'value': 'test'}]):
+                # Mock cookie loading - need to mock open properly
+                mock_file = Mock()
+                mock_file.__enter__ = Mock(return_value=mock_file)
+                mock_file.__exit__ = Mock(return_value=None)
+                mock_file.read = Mock(return_value='[{"name": "sessionid", "value": "test_value"}]')
+
+                with patch('builtins.open', return_value=mock_file):
+                    with patch('json.load', return_value=[{'name': 'sessionid', 'value': 'test_value'}]):
                         mock_context.add_cookies = AsyncMock()
 
-                # Mock page interactions
-                mock_page.goto = AsyncMock()
-                mock_page.wait_for_timeout = AsyncMock()
+                        # Mock page interactions
+                        mock_page.goto = AsyncMock()
+                        mock_page.wait_for_timeout = AsyncMock()
 
-                # Mock successful login detection
-                mock_page.wait_for_selector = AsyncMock()
+                        # Mock successful login detection - selector found
+                        mock_page.wait_for_selector = AsyncMock()
 
-                # Run test
-                result = await manager.login_with_cookies()
+                        # Run test
+                        result = await manager.login_with_cookies()
 
-                assert result == True
+                        assert result == True
+                        mock_context.add_cookies.assert_called_once()
+                        mock_page.goto.assert_called_once_with('https://www.instagram.com/')
 
     @pytest.mark.asyncio
     async def test_login_with_cookies_no_file(self):
