@@ -131,24 +131,33 @@ class TestVideoInfo:
 
     def test_to_dict(self):
         """Test conversion to dictionary."""
-        video_info = VideoInfo(
-            path=Path("/test/video.mp4"),
-            caption="Test",
-            hashtags=["test"],
-            location="Location",
-            duration_seconds=60,
-            size_mb=10,
-            format="mp4"
-        )
+        # Create a temporary file that actually exists
+        with tempfile.NamedTemporaryFile(suffix='.mp4', delete=False) as tmp:
+            tmp_path = tmp.name
 
-        data = video_info.to_dict()
-        assert data['path'] == "/test/video.mp4"
-        assert data['caption'] == "Test"
-        assert data['hashtags'] == ["test"]
-        assert data['location'] == "Location"
-        assert data['duration_seconds'] == 60
-        assert data['size_mb'] == 10
-        assert data['format'] == "mp4"
+        try:
+            video_info = VideoInfo(
+                path=Path(tmp_path),
+                caption="Test",
+                hashtags=["test"],
+                location="Location",
+                duration_seconds=60,
+                size_mb=10,
+                format="mp4"
+            )
+
+            data = video_info.to_dict()
+
+            # Note: to_dict() converts Path to string
+            assert data['path'] == tmp_path
+            assert data['caption'] == "Test"
+            assert data['hashtags'] == ["test"]
+            assert data['location'] == "Location"
+            assert data['duration_seconds'] == 60
+            assert data['size_mb'] == 10
+            assert data['format'] == "mp4"
+        finally:
+            os.unlink(tmp_path)
 
 
 class TestVideoUploader:
@@ -200,7 +209,7 @@ class TestVideoUploader:
     @pytest.mark.asyncio
     async def test_ensure_authenticated_without_browser_service(self):
         """Test ensure_authenticated creating its own browser service."""
-        with patch('src.upload.video_uploader.BrowserService') as mock_browser_class:
+        with patch('src.auth.browser_service.BrowserService') as mock_browser_class:
             mock_browser_service = AsyncMock()
             mock_browser_class.return_value = mock_browser_service
 

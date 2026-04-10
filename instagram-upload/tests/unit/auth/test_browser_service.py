@@ -19,6 +19,13 @@ from src.auth.browser_service import (
     BrowserNotInitializedError
 )
 
+# Check if playwright is available for async tests
+try:
+    import playwright
+    HAS_PLAYWRIGHT = True
+except ImportError:
+    HAS_PLAYWRIGHT = False
+
 
 class TestBrowserType:
     """Tests for BrowserType enum."""
@@ -107,6 +114,7 @@ class TestBrowserService:
             assert service.config.viewport_height == 768
 
     @pytest.mark.asyncio
+    @pytest.mark.skipif(not HAS_PLAYWRIGHT, reason="playwright not installed")
     async def test_initialize_success(self):
         """Test successful browser initialization."""
         service = BrowserService()
@@ -116,7 +124,8 @@ class TestBrowserService:
         mock_context = AsyncMock()
         mock_page = AsyncMock()
 
-        with patch('src.auth.browser_service.async_playwright') as mock_async_playwright:
+        with patch('playwright.async_api.async_playwright') as mock_async_playwright, \
+             patch('playwright') as mock_playwright_module:
             mock_async_playwright.return_value.start = AsyncMock(return_value=mock_playwright)
             mock_playwright.chromium.launch = AsyncMock(return_value=mock_browser)
             mock_browser.new_context = AsyncMock(return_value=mock_context)
@@ -138,7 +147,8 @@ class TestBrowserService:
         service._is_initialized = True
 
         # Should return immediately without calling playwright
-        with patch('src.auth.browser_service.async_playwright') as mock_async_playwright:
+        with patch('playwright.async_api.async_playwright') as mock_async_playwright, \
+             patch('playwright') as mock_playwright_module:
             await service.initialize()
             mock_async_playwright.assert_not_called()
 
@@ -147,7 +157,8 @@ class TestBrowserService:
         """Test browser initialization failure."""
         service = BrowserService()
 
-        with patch('src.auth.browser_service.async_playwright') as mock_async_playwright:
+        with patch('playwright.async_api.async_playwright') as mock_async_playwright, \
+             patch('playwright') as mock_playwright_module:
             mock_async_playwright.return_value.start = AsyncMock(side_effect=Exception("Test error"))
 
             with pytest.raises(BrowserInitError, match="Failed to initialize browser"):

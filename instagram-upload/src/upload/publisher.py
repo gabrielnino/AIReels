@@ -12,7 +12,7 @@ import asyncio
 import os
 import time
 import re
-from typing import Optional, Dict, Any, Tuple
+from typing import Optional, Dict, Any, Tuple, List
 from dataclasses import dataclass, field
 from enum import Enum
 from datetime import datetime

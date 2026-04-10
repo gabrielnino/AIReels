@@ -59,7 +59,7 @@ class VideoInfo:
     size_mb: Optional[float] = None
     format: Optional[str] = None
 
-    def __reply_init__(self):
+    def __post_init__(self):
         """Validate video info after initialization."""
         # Convert to Path if string provided
         if isinstance(self.path, str):
@@ -305,7 +305,9 @@ class VideoUploader:
         )
 
         print(f"🚀 Starting upload process for: {video_info.path.name}")
-        print(f"   Size: {video_info.size_mb:.1f}MB, Format: {video_info.format}")
+        size_display = f"{video_info.size_mb:.1f}MB" if video_info.size_mb else "unknown size"
+        format_display = video_info.format if video_info.format else "unknown format"
+        print(f"   Size: {size_display}, Format: {format_display}")
 
         # Validate video
         result.status = UploadStatus.VALIDATING
