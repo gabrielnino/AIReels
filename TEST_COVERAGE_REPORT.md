@@ -1,9 +1,10 @@
 # 📊 TEST COVERAGE REPORT
 
 **Fecha:** 2026-04-09  
-**Hora:** 17:40 (ACTUALIZADO)  
+**Hora:** 21:30 (ACTUALIZADO POST ATAQUE COORDINADO)  
 **Generado por:** Taylor QA Engineer  
-**Propósito:** Reporte de cobertura actual de tests para el proyecto AIReels
+**Propósito:** Reporte de cobertura actual de tests para el proyecto AIReels  
+**Basado en:** Resultados del ataque coordinado del equipo
 
 ---
 
@@ -12,8 +13,8 @@
 ### **Cobertura General del Proyecto**
 | Módulo | Tests Pasando | Tests Fallando | % Cobertura | Estado |
 |--------|---------------|----------------|-------------|--------|
-| **Integration Module** | 10/10 (100%) | 0/10 (0%) | 63% | ✅ **EXCELENTE** |
-| **Instagram Upload** | 102/123 (83%) | 21/123 (17%) | 52%* | ⚠️ **MEJORANDO** |
+| **Integration Module** | 15/15 (100%) | 0/15 (0%) | 64% | ✅ **EXCELENTE** |
+| **Instagram Upload** | 122/138 (88.4%) | 16/138 (11.6%) | 56% | ⚠️ **MEJORANDO** |
 | **qwen-poc (search_service)** | 8/8 (100%) | 0/8 (0%) | Por calcular | ✅ **EXCELENTE** |
 | **qwen-poc (image_service)** | 4/12 (33%) | 8/12 (67%) | Por calcular | 🔄 **EN PROGRESO** |
 
@@ -24,9 +25,10 @@
 ### **1. MÓDULO DE INTEGRACIÓN (`src/integration/`)**
 
 #### **Resumen:**
-- **Total Tests:** 10
-- **Tests Pasando:** 10 (100%)
-- **Cobertura Total:** 63%
+- **Total Tests:** 15
+- **Tests Pasando:** 15 (100%)
+- **Tests Pasando Detalle:** 10 unit + 5 integration manual tests
+- **Cobertura Total:** 64%
 
 #### **Cobertura por archivo:**
 ```

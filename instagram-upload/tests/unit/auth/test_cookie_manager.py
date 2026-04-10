@@ -1,3 +1,7 @@
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 """
 Unit tests for Cookie Manager.
 
@@ -10,7 +14,7 @@ import os
 import json
 import tempfile
 from datetime import datetime, timedelta
-from unittest.mock import Mock, patch, mock_open
+from unittest.mock import Mock, AsyncMock, patch, mock_open
 from pathlib import Path
 
 from src.auth.cookie_manager import (
@@ -380,8 +384,8 @@ class TestCookieManager:
 @pytest.mark.asyncio
 async def test_save_cookies_from_context():
     """Test saving cookies from browser context."""
-    mock_context = Mock()
-    mock_context.cookies = Mock(return_value=[
+    mock_context = AsyncMock()
+    mock_context.cookies = AsyncMock(return_value=[
         {"name": "sessionid", "value": "test", "domain": ".instagram.com"}
     ])
 
@@ -398,8 +402,8 @@ async def test_save_cookies_from_context():
 @pytest.mark.asyncio
 async def test_load_cookies_to_context():
     """Test loading cookies to browser context."""
-    mock_context = Mock()
-    mock_context.add_cookies = Mock()
+    mock_context = AsyncMock()
+    mock_context.add_cookies = AsyncMock()
 
     with patch('src.auth.cookie_manager.CookieManager') as mock_manager_class:
         mock_manager = Mock()

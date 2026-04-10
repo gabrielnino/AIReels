@@ -7,8 +7,13 @@ Date: 2026-04-08
 
 import pytest
 import os
+import sys
 from unittest.mock import Mock, patch, AsyncMock
 from datetime import datetime
+
+# Añadir path para imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 from src.auth.browser_service import (
     BrowserType,
@@ -124,9 +129,11 @@ class TestBrowserService:
         mock_context = AsyncMock()
         mock_page = AsyncMock()
 
-        with patch('playwright.async_api.async_playwright') as mock_async_playwright, \
-             patch('playwright') as mock_playwright_module:
-            mock_async_playwright.return_value.start = AsyncMock(return_value=mock_playwright)
+        with patch('playwright.async_api.async_playwright') as mock_async_playwright:
+            # Create the mock objects chain correctly
+            mock_playwright_instance = Mock()
+            mock_playwright_instance.chromium.launch = AsyncMock(return_value=mock_browser)
+            mock_async_playwright.return_value.start = AsyncMock(return_value=mock_playwright_instance)
             mock_playwright.chromium.launch = AsyncMock(return_value=mock_browser)
             mock_browser.new_context = AsyncMock(return_value=mock_context)
             mock_context.new_page = AsyncMock(return_value=mock_page)
@@ -135,7 +142,7 @@ class TestBrowserService:
             await service.initialize()
 
             assert service._is_initialized == True
-            assert service._playwright == mock_playwright
+            assert service._playwright == mock_playwright_instance
             assert service._browser == mock_browser
             assert service._context == mock_context
             assert service._page == mock_page
@@ -147,8 +154,7 @@ class TestBrowserService:
         service._is_initialized = True
 
         # Should return immediately without calling playwright
-        with patch('playwright.async_api.async_playwright') as mock_async_playwright, \
-             patch('playwright') as mock_playwright_module:
+        with patch('playwright.async_api.async_playwright') as mock_async_playwright:
             await service.initialize()
             mock_async_playwright.assert_not_called()
 
@@ -157,8 +163,7 @@ class TestBrowserService:
         """Test browser initialization failure."""
         service = BrowserService()
 
-        with patch('playwright.async_api.async_playwright') as mock_async_playwright, \
-             patch('playwright') as mock_playwright_module:
+        with patch('playwright.async_api.async_playwright') as mock_async_playwright:
             mock_async_playwright.return_value.start = AsyncMock(side_effect=Exception("Test error"))
 
             with pytest.raises(BrowserInitError, match="Failed to initialize browser"):
@@ -239,11 +244,19 @@ class TestBrowserService:
         """Test checking if element is visible (true case)."""
         service = BrowserService()
         service._is_initialized = True
-        service._page = AsyncMock()
+        # page.locator is a sync method, not async
+        service._page = Mock()
 
-        mock_element = AsyncMock()
-        mock_element.is_visible = AsyncMock(return_value=True)
-        service._page.locator = Mock(return_value=mock_element)
+        # Create a mock element with async is_visible method
+        mock_element = Mock()
+        async def is_visible_mock(timeout=None):
+            return True
+        mock_element.is_visible = is_visible_mock
+
+        # Configure locator to return an object with a .first property
+        locator_return = Mock()
+        locator_return.first = mock_element
+        service._page.locator.return_value = locator_return
 
         result = await service.is_element_visible(".test-selector")
         assert result == True
@@ -253,11 +266,19 @@ class TestBrowserService:
         """Test checking if element is visible (false case)."""
         service = BrowserService()
         service._is_initialized = True
-        service._page = AsyncMock()
+        # page.locator is a sync method, not async
+        service._page = Mock()
 
-        mock_element = AsyncMock()
-        mock_element.is_visible = AsyncMock(side_effect=Exception("Not visible"))
-        service._page.locator = Mock(return_value=mock_element)
+        # Create a mock element with async is_visible method that raises exception
+        mock_element = Mock()
+        async def is_visible_exception(timeout=None):
+            raise Exception("Not visible")
+        mock_element.is_visible = is_visible_exception
+
+        # Configure locator to return an object with a .first property
+        locator_return = Mock()
+        locator_return.first = mock_element
+        service._page.locator.return_value = locator_return
 
         result = await service.is_element_visible(".test-selector")
         assert result == False
@@ -267,11 +288,19 @@ class TestBrowserService:
         """Test getting text from element that is found."""
         service = BrowserService()
         service._is_initialized = True
-        service._page = AsyncMock()
+        # page.locator is a sync method, not async
+        service._page = Mock()
 
-        mock_element = AsyncMock()
-        mock_element.text_content = AsyncMock(return_value="Test Text")
-        service._page.locator = Mock(return_value=mock_element)
+        # Create a mock element with async text_content method
+        mock_element = Mock()
+        async def text_content_mock():
+            return "Test Text"
+        mock_element.text_content = text_content_mock
+
+        # Configure locator to return an object with a .first property
+        locator_return = Mock()
+        locator_return.first = mock_element
+        service._page.locator.return_value = locator_return
 
         result = await service.get_element_text(".test-selector")
         assert result == "Test Text"
@@ -281,11 +310,19 @@ class TestBrowserService:
         """Test getting text from element that is not found."""
         service = BrowserService()
         service._is_initialized = True
-        service._page = AsyncMock()
+        # page.locator is a sync method, not async
+        service._page = Mock()
 
-        mock_element = AsyncMock()
-        mock_element.text_content = AsyncMock(side_effect=Exception("Not found"))
-        service._page.locator = Mock(return_value=mock_element)
+        # Create a mock element with async text_content method that raises exception
+        mock_element = Mock()
+        async def text_content_exception():
+            raise Exception("Not found")
+        mock_element.text_content = text_content_exception
+
+        # Configure locator to return an object with a .first property
+        locator_return = Mock()
+        locator_return.first = mock_element
+        service._page.locator.return_value = locator_return
 
         result = await service.get_element_text(".test-selector")
         assert result is None

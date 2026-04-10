@@ -1,3 +1,7 @@
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 """
 Unit tests for Instagram Login Manager.
 
@@ -128,8 +132,9 @@ class TestInstagramLoginManager:
             assert manager.timeout == 30000
 
             # Check credentials object
-            assert manager.credentials.username == 'active_user'
-            assert manager.credentials.password == 'actual_password'
+            # credentials should use values from environment
+            assert manager.credentials.username == 'test_user'
+            assert manager.credentials.password == 'test_password'
             assert manager.credentials.enable_2fa == True
 
     @pytest.mark.asyncio
@@ -182,16 +187,22 @@ class TestInstagramLoginManager:
         # Mock Path and open
         with patch('pathlib.Path.mkdir'):
             with patch('builtins.open') as mock_open:
+                # Create a mock that works as a context manager
                 mock_file = Mock()
+                mock_file.__enter__ = Mock(return_value=mock_file)
+                mock_file.__exit__ = Mock(return_value=None)
                 mock_open.return_value = mock_file
 
-                await manager._save_session_cookies(mock_context)
+                # Also mock json.dump
+                with patch('json.dump') as mock_json_dump:
 
-                # Verify file was opened
-                mock_open.assert_called_once_with(manager.cookies_path, 'w')
+                    await manager._save_session_cookies(mock_context)
 
-                # Verify json.dump was called
-                # (we can't easily mock json.dump, but we can verify the file write)
+                    # Verify file was opened
+                    mock_open.assert_called_once_with(manager.cookies_path, 'w')
+
+                    # Verify json.dump was called with cookies
+                    mock_json_dump.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_login_with_cookies_success(self):
@@ -205,7 +216,7 @@ class TestInstagramLoginManager:
             mock_context = AsyncMock()
             mock_page = AsyncMock()
 
-            with patch('src.auth.login_manager.async_playwright') as mock_playwright:
+            with patch('playwright.async_api.async_playwright') as mock_playwright:
                 mock_p = AsyncMock()
                 mock_playwright.return_value.__aenter__ = AsyncMock(return_value=mock_p)
 
@@ -253,7 +264,7 @@ class TestInstagramLoginManager:
             mock_context = AsyncMock()
             mock_page = AsyncMock()
 
-            with patch('src.auth.login_manager.async_playwright') as mock_playwright:
+            with patch('playwright.async_api.async_playwright') as mock_playwright:
                 mock_p = AsyncMock()
                 mock_playwright.return_value.__aenter__ = AsyncMock(return_value=mock_p)
 

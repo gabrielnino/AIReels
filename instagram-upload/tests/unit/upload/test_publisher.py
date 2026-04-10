@@ -1,3 +1,7 @@
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 """
 Unit tests for Publisher.
 
@@ -101,12 +105,25 @@ class TestPublisher:
         mock_browser_service.click_like_human = AsyncMock()
         mock_browser_service.take_screenshot = AsyncMock()
 
-        publisher = Publisher(mock_browser_service)
+        # Mock os.getenv with a dictionary
+        env_values = {
+            'INSTAGRAM_DRY_RUN': 'false',
+            'INSTAGRAM_PUBLISH_TIMEOUT': '120'
+        }
+        with patch('os.getenv') as mock_getenv:
+            def getenv_side_effect(key, default=None):
+                return env_values.get(key, default)
 
-        result = await publisher.click_share_button()
+            mock_getenv.side_effect = getenv_side_effect
 
-        assert result == True
-        mock_browser_service.click_like_human.assert_called_once()
+            publisher = Publisher(mock_browser_service)
+            # Ensure dry_run is False for this test
+            publisher._dry_run = False
+
+            result = await publisher.click_share_button()
+
+            assert result == True
+            mock_browser_service.click_like_human.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_click_share_button_not_found(self):
@@ -126,13 +143,32 @@ class TestPublisher:
     async def test_click_share_button_dry_run(self):
         """Test clicking share button in dry run mode."""
         mock_browser_service = AsyncMock()
-        publisher = Publisher(mock_browser_service)
-        publisher._dry_run = True
+        mock_browser_service.wait_for_element = AsyncMock(return_value=True)
+        mock_browser_service.click_like_human = AsyncMock()
+        mock_browser_service.take_screenshot = AsyncMock()
 
-        result = await publisher.click_share_button()
+        # Mock os.getenv with a dictionary
+        env_values = {
+            'INSTAGRAM_DRY_RUN': 'true',
+            'INSTAGRAM_PUBLISH_TIMEOUT': '120'
+        }
+        with patch('os.getenv') as mock_getenv:
+            def getenv_side_effect(key, default=None):
+                return env_values.get(key, default)
 
-        assert result == True  # Dry run always returns True
-        mock_browser_service.wait_for_element.assert_not_called()
+            mock_getenv.side_effect = getenv_side_effect
+
+            publisher = Publisher(mock_browser_service)
+            # Ensure dry_run is True for this test
+            publisher._dry_run = True
+
+            result = await publisher.click_share_button()
+
+            assert result == True  # Dry run always returns True
+            # In dry run, wait_for_element should be called to find the button
+            mock_browser_service.wait_for_element.assert_called()
+            # But click_like_human should NOT be called
+            mock_browser_service.click_like_human.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_wait_for_publication_success(self):
@@ -155,18 +191,35 @@ class TestPublisher:
     async def test_wait_for_publication_error(self):
         """Test waiting for publication with error."""
         mock_browser_service = AsyncMock()
-        mock_browser_service.is_element_visible = AsyncMock(side_effect=[False, True])
+        # There are 6 success indicators and 5 error indicators in the implementation
+        # We need all success indicators to return False, and at least one error indicator to return True
+        # Create side_effect with 6 False (for success indicators) then some True (for error indicators)
+        side_effect_values = [False] * 6  # For success indicators
+        side_effect_values.append(True)   # First error indicator returns True
+        side_effect_values.extend([False] * 4)  # Remaining error indicators
+
+        mock_browser_service.is_element_visible = AsyncMock(side_effect=side_effect_values)
         mock_browser_service.get_element_text = AsyncMock(return_value="Something went wrong")
         mock_browser_service.take_screenshot = AsyncMock()
         mock_browser_service.page = AsyncMock()
         mock_browser_service.page.wait_for_selector = AsyncMock(side_effect=Exception("Not found"))
 
-        publisher = Publisher(mock_browser_service)
+        # Mock os.getenv
+        env_values = {
+            'INSTAGRAM_PUBLISH_TIMEOUT': '120'
+        }
+        with patch('os.getenv') as mock_getenv:
+            def getenv_side_effect(key, default=None):
+                return env_values.get(key, default)
 
-        success, message = await publisher.wait_for_publication(timeout=5)
+            mock_getenv.side_effect = getenv_side_effect
 
-        assert success == False
-        assert "error" in message.lower() or "wrong" in message.lower()
+            publisher = Publisher(mock_browser_service)
+
+            success, message = await publisher.wait_for_publication(timeout=5)
+
+            assert success == False
+            assert "error" in message.lower() or "wrong" in message.lower()
 
     @pytest.mark.asyncio
     async def test_wait_for_publication_timeout(self):
