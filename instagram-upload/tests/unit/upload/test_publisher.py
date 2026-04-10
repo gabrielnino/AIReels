@@ -344,6 +344,7 @@ class TestPublisher:
                 with patch.object(Publisher, 'get_post_url', AsyncMock(return_value="https://example.com/p/123")):
                     with patch.object(Publisher, 'extract_post_id', AsyncMock(return_value="123")):
                         publisher = Publisher(mock_browser_service)
+                        publisher._dry_run = False  # Ensure not in dry run mode
 
                         result = await publisher.publish_post()
 
@@ -361,6 +362,7 @@ class TestPublisher:
 
         with patch.object(Publisher, 'click_share_button', AsyncMock(return_value=False)):
             publisher = Publisher(mock_browser_service)
+            publisher._dry_run = False  # Ensure not in dry run mode
 
             result = await publisher.publish_post()
 

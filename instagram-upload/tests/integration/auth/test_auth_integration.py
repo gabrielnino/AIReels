@@ -128,7 +128,7 @@ class TestAuthIntegration:
                 mock_context = AsyncMock()
                 mock_page = AsyncMock()
 
-                with patch('src.auth.browser_service.async_playwright') as mock_async_playwright:
+                with patch('playwright.async_api.async_playwright') as mock_async_playwright:
                     mock_async_playwright.return_value.start = AsyncMock(return_value=mock_playwright)
                     mock_playwright.chromium.launch = AsyncMock(return_value=mock_browser)
                     mock_browser.new_context = AsyncMock(return_value=mock_context)

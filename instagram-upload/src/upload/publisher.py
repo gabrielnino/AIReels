@@ -395,6 +395,19 @@ class Publisher:
         """
         print(f"📅 Scheduling post for {schedule_time}...")
 
+        # In dry run mode, simulate success
+        if self._dry_run:
+            start_time = time.time()
+            result = PublicationResult(
+                success=True,
+                status=PublicationStatus.SCHEDULED,
+                message=f"DRY RUN: Post would be scheduled for {schedule_time}",
+                scheduled_for=schedule_time,
+                duration_seconds=time.time() - start_time
+            )
+            print("🔸 DRY RUN: Scheduling simulated successfully")
+            return result
+
         if not self.browser_service:
             raise PublishError("BrowserService required for scheduling")
 
