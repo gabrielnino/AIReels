@@ -15,7 +15,7 @@ from datetime import datetime
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
-from src.auth.browser_service import (
+from instagram_upload.src.auth.browser_service import (
     BrowserType,
     BrowserConfig,
     BrowserService,
@@ -129,7 +129,7 @@ class TestBrowserService:
         mock_context = AsyncMock()
         mock_page = AsyncMock()
 
-        with patch('playwright.async_api.async_playwright') as mock_async_playwright:
+        with patch\('src.auth.browser_service.async_playwright'\) as mock_async_playwright:
             # Create the mock objects chain correctly
             mock_playwright_instance = Mock()
             mock_playwright_instance.chromium.launch = AsyncMock(return_value=mock_browser)
@@ -154,7 +154,7 @@ class TestBrowserService:
         service._is_initialized = True
 
         # Should return immediately without calling playwright
-        with patch('playwright.async_api.async_playwright') as mock_async_playwright:
+        with patch\('src.auth.browser_service.async_playwright'\) as mock_async_playwright:
             await service.initialize()
             mock_async_playwright.assert_not_called()
 
@@ -163,7 +163,7 @@ class TestBrowserService:
         """Test browser initialization failure."""
         service = BrowserService()
 
-        with patch('playwright.async_api.async_playwright') as mock_async_playwright:
+        with patch\('src.auth.browser_service.async_playwright'\) as mock_async_playwright:
             mock_async_playwright.return_value.start = AsyncMock(side_effect=Exception("Test error"))
 
             with pytest.raises(BrowserInitError, match="Failed to initialize browser"):

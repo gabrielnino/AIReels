@@ -14,7 +14,7 @@ import os
 from unittest.mock import Mock, patch, AsyncMock
 from datetime import datetime, timedelta
 
-from src.auth.login_manager import (
+from instagram_upload.src.auth.login_manager import (
     InstagramLoginManager,
     LoginCredentials,
     TwoFactorCode,

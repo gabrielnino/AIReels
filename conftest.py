@@ -40,3 +40,38 @@ def pytest_configure(config):
     print(f"🔧 Pytest configured for AIReels project")
     print(f"📁 Project root: {project_root}")
     print(f"🐍 Python path: {sys.path[:3]}")
+
+# Fixtures globales
+import pytest
+
+@pytest.fixture(autouse=True)
+def setup_test_environment():
+    """Setup test environment before each test."""
+    # Asegurar que estamos usando variables de entorno de test
+    os.environ.setdefault('INSTAGRAM_DRY_RUN', 'true')
+    os.environ.setdefault('TEST_MODE', 'true')
+    os.environ.setdefault('SKIP_BROWSER_LAUNCH', 'true')
+
+    yield
+
+    # Cleanup después de cada test
+    pass
+
+@pytest.fixture
+def mock_browser_service():
+    """Mock de BrowserService para tests."""
+    from unittest.mock import AsyncMock, Mock
+    mock_service = Mock()
+    mock_service.page = AsyncMock()
+    mock_service.wait_for_element = AsyncMock(return_value=True)
+    mock_service.click_like_human = AsyncMock()
+    mock_service.take_screenshot = AsyncMock()
+    mock_service.get_element_text = AsyncMock(return_value="Test text")
+    return mock_service
+
+@pytest.fixture
+def temp_video_file(tmp_path):
+    """Crear archivo de video temporal para tests."""
+    video_path = tmp_path / "test_video.mp4"
+    video_path.write_bytes(b'dummy video content' * 100)
+    return video_path

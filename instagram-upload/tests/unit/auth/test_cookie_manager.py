@@ -17,7 +17,7 @@ from datetime import datetime, timedelta
 from unittest.mock import Mock, AsyncMock, patch, mock_open
 from pathlib import Path
 
-from src.auth.cookie_manager import (
+from instagram_upload.src.auth.cookie_manager import (
     CookieRecord,
     SessionInfo,
     CookieManager,
