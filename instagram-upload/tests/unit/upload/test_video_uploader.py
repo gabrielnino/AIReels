@@ -16,7 +16,7 @@ from pathlib import Path
 from unittest.mock import Mock, patch, AsyncMock
 from datetime import datetime
 
-from instagram_upload.src.upload.video_uploader import (
+from src.upload.video_uploader import (
     VideoUploader,
     VideoInfo,
     UploadResult,

@@ -16,7 +16,7 @@ import time
 from unittest.mock import Mock, patch, AsyncMock
 from datetime import datetime
 
-from instagram_upload.src.upload.publisher import (
+from src.upload.publisher import (
     Publisher,
     PublicationResult,
     PublicationStatus,

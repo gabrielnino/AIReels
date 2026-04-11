@@ -14,7 +14,7 @@ import os
 import re
 from unittest.mock import Mock, patch, AsyncMock
 
-from instagram_upload.src.upload.metadata_handler import (
+from src.upload.metadata_handler import (
     MetadataHandler,
     VideoMetadata,
     MetadataError,
