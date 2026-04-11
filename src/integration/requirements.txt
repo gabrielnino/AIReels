@@ -1,0 +1,17 @@
+# Requirements for integration module
+# These dependencies are needed for the integration module to work
+
+# Core dependencies
+python-dotenv>=1.0.0
+
+# Playwright for UI automation (optional, only for playwright_uploader)
+playwright>=1.40.0
+
+# Note: playwright needs to be installed with:
+# pip install playwright
+# playwright install
+
+# Testing dependencies (optional)
+pytest>=7.0.0
+pytest-asyncio>=0.21.0
+pytest-cov>=4.0.0

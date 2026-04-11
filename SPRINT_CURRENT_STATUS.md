@@ -137,16 +137,18 @@
 **Estado:** ✅ RESUELTO  
 **Verificación:** `pytest --version` funciona, 10/10 tests pasan
 
-### **B2: Dos enfoques diferentes de upload**
+### **✅ B2: Decisión sobre enfoque de upload - RESUELTO**
 **Detectado por:** Alex Technical Architect  
-**Fecha:** 2026-04-08  
-**Impacto:** Decisión arquitectónica pendiente  
-**Descripción:** 
-- Enfoque 1: Graph API (actual en qwen-poc)
-- Enfoque 2: Playwright UI (nuevo en instagram-upload)
-**Solución propuesta:** Reunión de arquitectura para decidir  
+**Fecha:** 2026-04-11  
+**Decisión:** **Playwright UI exclusivo**  
+**Justificación:** 
+- Requisito del usuario: NO usar Graph API
+- Código existente funcional en instagram-upload/
+- Sin dependencias de API externas
+- Acceso completo a funcionalidades de Instagram UI
+**Documentado en:** `ARCHITECTURE_DECISIONS.md` [ADR-007]  
 **Responsable:** Alex Technical Architect  
-**Estado:** 🟡 PENDIENTE
+**Estado:** ✅ RESUELTO
 
 ---
 

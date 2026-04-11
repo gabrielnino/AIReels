@@ -238,6 +238,90 @@ Sistema híbrido:
 
 ---
 
+### [ADR-007] Enfoque de Upload a Instagram
+**Fecha:** 2026-04-11  
+**Estado:** Aprobada (Revisada)  
+**Decisor:** Alex Technical Architect  
+**Participantes:** Equipo completo de desarrollo
+
+#### Contexto
+Necesidad de decidir el enfoque para subir videos a Instagram desde la aplicación AIReels. Existen dos enfoques principales en el códigobase:
+1. **Graph API** (en qwen-poc/service/instagram_service.py) - Enfoque oficial de Instagram
+2. **Playwright UI** (en instagram-upload/) - Automatización del navegador
+
+**Actualización:** El usuario ha especificado que no se usará Graph API debido a requisitos del proyecto. La decisión se revisa para usar exclusivamente Playwright UI.
+
+#### Opciones Consideradas
+1. **Opción A: Graph API exclusivo**
+   - **Ventajas:**
+     - Oficial y soportado por Instagram
+     - Más confiable y estable
+     - Mejor rendimiento (sin overhead de navegador)
+     - Mejor manejo de errores
+   - **Desventajas:**
+     - Requiere access token de Instagram
+     - Limitaciones de API (rate limits, funcionalidades)
+     - Requiere configuración de aplicación en Facebook Developer
+     - **NO ES UNA OPCIÓN** según requisitos del usuario
+
+2. **Opción B: Playwright UI exclusivo**
+   - **Ventajas:**
+     - No requiere API key/token
+     - Acceso completo a todas las funcionalidades de la UI
+     - Más flexible para cambios en la UI
+     - Puede manejar autenticación de usuario normal
+     - Ya existe implementación funcional en instagram-upload/
+   - **Desventajas:**
+     - Alto mantenimiento (frágil ante cambios en UI)
+     - Más lento (overhead de navegador)
+     - Más propenso a errores (timeouts, selectores rotos)
+     - Requiere manejo de sesiones/cookies
+
+3. **Opción C: Enfoque híbrido (Playwright UI por defecto, Graph API como alternativa)**
+   - **Ventajas:**
+     - Flexibilidad futura
+     - Posibilidad de migrar a Graph API si cambian requisitos
+   - **Desventajas:**
+     - Mayor complejidad
+     - Mantenimiento de dos sistemas
+     - No necesario según requisitos actuales
+
+#### Decisión
+**Opción B: Playwright UI exclusivo** por las siguientes razones:
+
+1. **Requisitos del usuario:** Claramente especificado que no se usará Graph API
+2. **Código existente:** Ya tenemos implementación completa en instagram-upload/
+3. **Sin dependencias externas:** No requiere aprobación de Facebook Developer
+4. **Funcionalidad completa:** Acceso a todas las características de Instagram UI
+5. **Mantenibilidad:** Podemos enfocar esfuerzos en una sola implementación
+
+**Implementación:**
+1. **Fase 1:** Usar Playwright UI como único enfoque
+2. **Fase 2:** Integrar con módulo de integración existente
+3. **Fase 3:** Añadir robustez y manejo de errores
+
+#### Consecuencias
+- **Positivas:**
+  - Cumple requisitos del usuario
+  - Utiliza código existente funcional
+  - Sin necesidad de configuración compleja de API
+  - Acceso completo a funcionalidades de Instagram
+- **Negativas:**
+  - Mayor fragilidad ante cambios en UI de Instagram
+  - Performance más lento por overhead de navegador
+  - Requiere mantenimiento continuo de selectores
+- **Neutrales:**
+  - Configuración basada en archivos .env
+  - Necesita navegador instalado (Playwright)
+
+#### Validación
+- Tests de integración deben pasar con Playwright
+- Sistema debe manejar errores de UI robustamente
+- Performance debe ser aceptable para uso productivo
+- Debe funcionar con diferentes configuraciones de navegador
+
+---
+
 ## Plantilla para Nuevas Decisiones
 
 ### [ADR-XXX] Título de la Decisión
