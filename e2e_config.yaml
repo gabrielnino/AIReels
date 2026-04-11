@@ -1,0 +1,232 @@
+# 🧪 CONFIGURACIÓN DE PRUEBAS END-TO-END (E2E)
+# Última actualización: 2026-04-10
+
+environment:
+  # Modo de ejecución: production_like | staging | development
+  mode: "production_like"
+
+  # Usar APIs reales o mocks
+  use_real_apis: false  # Cambiar a true para pruebas reales
+
+  # Captura de screenshots (requiere configuración adicional)
+  enable_screenshots: false
+
+  # Entorno aislado para pruebas
+  isolation_level: "full"  # full | partial | none
+
+  # Timeouts globales (segundos)
+  global_timeout: 1800  # 30 minutos máximo por prueba
+  stage_timeout: 300   # 5 minutos por etapa
+
+instagram:
+  # Tipo de cuenta: test_account | real_account
+  account_type: "test_account"
+
+  # Modo dry run para pruebas iniciales
+  use_dry_run: true
+
+  # Timeout para validación post-publicación
+  validation_timeout: 300  # 5 minutos
+
+  # Enfoque de upload: graph_api | playwright | mock
+  upload_approach: "mock"
+
+  # Credenciales (se cargan desde variables de entorno)
+  # INSTAGRAM_ACCESS_TOKEN para Graph API
+  # INSTAGRAM_USERNAME/INSTAGRAM_PASSWORD para Playwright
+
+pipeline:
+  # Idioma para generación de contenido
+  language: "en"
+
+  # Tema específico (null para selección automática)
+  topic_override: null
+
+  # Límites de ejecución
+  max_execution_time: 1800  # 30 minutos
+
+  # Modo de generación de contenido
+  content_generation: true  # false para pruebas sin generación
+
+  # APIs externas configuradas
+  external_apis:
+    dashscope_enabled: false
+    deepseek_enabled: false
+    fal_enabled: false
+    elevenlabs_enabled: false
+    brave_search_enabled: false
+
+validation:
+  # Validación de assets generados
+  check_video_playback: true
+  verify_caption_content: true
+  validate_hashtags: true
+
+  # Validación de formato y tamaño
+  validate_video_format: true
+  validate_video_size: true
+  validate_image_format: true
+
+  # Screenshots en fallos
+  screenshot_on_failure: true
+
+  # Assertions por etapa
+  stage_assertions:
+    topic_selection: true
+    strategy_definition: true
+    asset_generation: true
+    metadata_validation: true
+    publication_process: true
+    post_publication: true
+
+reporting:
+  # Generación de reportes
+  generate_html_report: true
+  generate_json_report: true
+
+  # Evidencia y logs
+  save_evidence: true
+  evidence_retention_days: 7
+
+  # Nivel de logging
+  log_level: "DEBUG"  # DEBUG | INFO | WARNING | ERROR
+
+  # Directorios de salida
+  output_dir: "e2e_tests/reports"
+  evidence_dir: "e2e_tests/reports/evidence"
+  logs_dir: "e2e_tests/reports/logs"
+
+security:
+  # Almacenamiento de credenciales
+  credential_storage: "env_vars"  # env_vars | vault | aws_secrets
+
+  # Sanitización de datos sensibles
+  data_sanitization: true
+  sanitize_fields:
+    - "api_keys"
+    - "tokens"
+    - "passwords"
+    - "access_tokens"
+    - "session_ids"
+
+  # Aislamiento de red
+  network_isolation: false
+  allowed_endpoints_only: false
+
+recovery:
+  # Mecanismos de recovery
+  retry_enabled: true
+  max_retries: 3
+  retry_backoff: 2  # multiplicador exponencial
+
+  # Circuit breakers
+  circuit_breaker_enabled: true
+  failure_threshold: 5
+  recovery_timeout: 60
+
+  # Fallbacks
+  enable_fallbacks: true
+  fallback_strategies:
+    - "mock_generation"
+    - "cached_content"
+    - "simulated_upload"
+
+performance:
+  # Métricas de performance
+  track_performance: true
+  performance_thresholds:
+    total_time: 1800  # 30 minutos
+    stage_time: 300   # 5 minutos por etapa
+    api_response_time: 30  # segundos
+
+  # Monitoreo de recursos
+  monitor_resources: true
+  resource_limits:
+    cpu_percent: 80
+    memory_mb: 4096
+    disk_mb: 1024
+
+# Escenarios de prueba predefinidos
+test_scenarios:
+  basic_success:
+    name: "Flujo básico exitoso"
+    description: "Validar pipeline completo con mocking"
+    enabled: true
+    use_real_apis: false
+    validation_level: "full"
+
+  error_recovery:
+    name: "Recuperación de errores"
+    description: "Validar mecanismos de recovery"
+    enabled: true
+    simulate_failures: true
+    failure_points:
+      - "trend_api"
+      - "image_generation"
+      - "upload_process"
+
+  limits_validation:
+    name: "Validación de límites"
+    description: "Validar handling de edge cases"
+    enabled: true
+    test_limits: true
+    limits_to_test:
+      - "video_duration"
+      - "caption_length"
+      - "hashtag_count"
+
+  performance_test:
+    name: "Performance y escalabilidad"
+    description: "Validar performance bajo carga"
+    enabled: false  # Habilitar solo cuando sea necesario
+    parallel_executions: 3
+    load_testing: true
+
+# Configuración específica por API
+api_configs:
+  instagram_graph_api:
+    base_url: "https://graph.instagram.com"
+    version: "v18.0"
+    rate_limit: 200  # requests por hora
+    timeout: 30
+
+  dashscope_api:
+    base_url: "https://dashscope.aliyuncs.com"
+    model: "wanx-v1"
+    max_images: 5
+    timeout: 60
+
+  deepseek_api:
+    base_url: "https://api.deepseek.com"
+    model: "deepseek-chat"
+    max_tokens: 4096
+    timeout: 30
+
+  fal_api:
+    base_url: "https://fal.run"
+    model: "fal-ai/fast-svd"
+    timeout: 120
+
+  brave_search_api:
+    base_url: "https://api.search.brave.com"
+    max_results: 10
+    timeout: 10
+
+# Configuración de notificaciones
+notifications:
+  email_enabled: false
+  email_recipients: []
+
+  slack_enabled: false
+  slack_webhook: ""
+
+  webhook_enabled: false
+  webhook_url: ""
+
+# Metadata para reportes
+metadata:
+  project: "AIReels"
+  version: "1.0.0"
+  environment: "testing"
+  team: "AIReels Team"
+  contact: "team@aireels.example.com"
