@@ -43,6 +43,14 @@ wheels/
 .installed.cfg
 *.egg
 
+# Entornos virtuales
+venv*/
+env*/
+venv_integration/
+
+# Directorio data (datos generados)
+data/
+
 # IDE
 .vscode/
 .idea/
