@@ -47,7 +47,7 @@
 nano .env.instagram
 # Configurar:
 # INSTAGRAM_USERNAME=fiestacotoday
-# INSTAGRAM_PASSWORD=f4vU+PtT.WUyzqN
+# INSTAGRAM_PASSWORD=RtiChUga0jI3x!D
 # INSTAGRAM_ENABLE_2FA=true
 
 # 3. Probar login (incluye 2FA)

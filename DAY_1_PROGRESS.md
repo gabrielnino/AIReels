@@ -35,7 +35,7 @@
 ### ✅ **CONFIGURACIÓN COMPLETA**
 - ✅ `.env.instagram` creado con credenciales reales
 - ✅ `INSTAGRAM_USERNAME=fiestacotoday`
-- ✅ `INSTAGRAM_PASSWORD=f4vU+PtT.WUyzqN`
+- ✅ `INSTAGRAM_PASSWORD=RtiChUga0jI3x!D`
 - ✅ `INSTAGRAM_ENABLE_2FA=true`
 - ✅ Directorios `data/` y `logs/` creados
 - ✅ Requirements list para el módulo

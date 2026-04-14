@@ -86,7 +86,7 @@ cd instagram-upload/
 # 1. Configurar credenciales
 nano .env.instagram
 # INSTAGRAM_USERNAME=fiestacotoday
-# INSTAGRAM_PASSWORD=f4vU+PtT.WUyzqN
+# INSTAGRAM_PASSWORD=RtiChUga0jI3x!D
 # INSTAGRAM_ENABLE_2FA=true
 
 # 2. Probar login (se pausará para 2FA)
