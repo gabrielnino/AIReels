@@ -1,0 +1,87 @@
+================================================================================
+🚀 UPLOAD CON AUTENTICACIÓN MEJORADA
+================================================================================
+⏰ Inicio: 2026-04-13 20:43:38
+
+🚀 INICIANDO UPLOAD CON AUTENTICACIÓN MEJORADA
+
+🎯 OBJETIVO: Upload con autenticación verificada correctamente
+
+✅ Módulos importados
+✅ Usuario: fiestacotoday
+✅ Video: test_video_aireels.mp4
+✅ Navegador configurado (visible, muy lento)
+
+🖥️  INICIALIZANDO NAVEGADOR...
+🖥️  Initializing browser service...
+✅ Browser service initialized (chromium)
+✅ Navegador inicializado
+
+🌐 NAVEGANDO A INSTAGRAM...
+🔍 VERIFICANDO AUTENTICACIÓN MEJORADA...
+ℹ️  URL actual: https://www.instagram.com/
+✅ Probablemente autenticado (URL de Instagram no es login)
+✅ Selector de autenticación encontrado: div:has-text("Create"):visible
+✅ ¡AUTENTICACIÓN CONFIRMADA!
+
+🔧 CERRANDO POPUP DE NOTIFICACIONES...
+🔧 CERRANDO POPUP DE NOTIFICACIONES DEFINITIVAMENTE...
+✅ Click en posición (960, 648)
+✅ Click en posición (960, 702)
+✅ Click en posición (960, 756)
+✅ Click en posición (1152, 648)
+✅ Click en posición (768, 648)
+✅ Escape presionado
+✅ Click en posición (960, 648)
+✅ Click en posición (960, 702)
+✅ Click en posición (960, 756)
+✅ Click en posición (1152, 648)
+✅ Click en posición (768, 648)
+✅ Escape presionado
+✅ Click en posición (960, 648)
+✅ Click en posición (960, 702)
+✅ Click en posición (960, 756)
+✅ Click en posición (1152, 648)
+✅ Click en posición (768, 648)
+✅ Escape presionado
+✅ Intentos de cerrar popup completados
+
+🔧 CREANDO VIDEO UPLOADER PERSONALIZADO...
+✅ Componentes creados (VideoUploader parcheado)
+
+============================================================
+📤 INICIANDO UPLOAD
+============================================================
+
+🚀 SUBIENDO VIDEO...
+🚀 Starting upload process for: test_video_aireels.mp4
+   Size: unknown size, Format: mp4
+✅ Video validation passed
+📍 Navigating to upload page...
+🔧 USANDO VERIFICACIÓN DE AUTENTICACIÓN PARCHEADA...
+🔍 VERIFICANDO AUTENTICACIÓN MEJORADA...
+ℹ️  URL actual: https://www.instagram.com/
+✅ Probablemente autenticado (URL de Instagram no es login)
+✅ Selector de autenticación encontrado: div:has-text("Create"):visible
+✅ Autenticación verificada (parcheado)
+❌ Could not find create button
+❌ Failed to navigate to upload page
+   • Status: UploadStatus.FAILED
+   • Mensaje: Failed to navigate to upload page
+❌ Upload falló
+
+⚠️  Cerrando navegador...
+🧹 Cleaning up browser service...
+✅ Browser service closed
+✅ Navegador cerrado
+
+================================================================================
+🏁 FIN DE EJECUCIÓN
+================================================================================
+❌ FALLÓ
+
+🔧 RECOMENDACIONES:
+   1. Verifica que estás logueado en Instagram
+   2. Cierra manualmente cualquier popup
+   3. Asegúrate de que 2FA está deshabilitado
+   4. Intenta hacer login manualmente primero

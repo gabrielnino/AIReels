@@ -1,0 +1,112 @@
+Traceback (most recent call last):
+  File "/home/luis/code/AIReels/upload_solucion_final.py", line 385, in upload_solucion_final
+    upload_result = await video_uploader.upload_video(video_info)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/luis/code/AIReels/instagram-upload/src/upload/video_uploader.py", line 326, in upload_video
+    if not await self.navigate_to_upload():
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/luis/code/AIReels/instagram-upload/src/upload/video_uploader.py", line 200, in navigate_to_upload
+    if not await self.ensure_authenticated():
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/luis/code/AIReels/instagram-upload/src/upload/video_uploader.py", line 180, in ensure_authenticated
+    await self.browser_service.navigate_to_instagram()
+  File "/home/luis/code/AIReels/instagram-upload/src/auth/browser_service.py", line 121, in navigate_to_instagram
+    await self._page.goto('https://www.instagram.com/')
+  File "/home/luis/code/AIReels/venv_aireels/lib/python3.12/site-packages/playwright/async_api/_generated.py", line 9045, in goto
+    await self._impl_obj.goto(
+  File "/home/luis/code/AIReels/venv_aireels/lib/python3.12/site-packages/playwright/_impl/_page.py", line 552, in goto
+    return await self._main_frame.goto(**locals_to_params(locals()))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/luis/code/AIReels/venv_aireels/lib/python3.12/site-packages/playwright/_impl/_frame.py", line 153, in goto
+    await self._channel.send(
+  File "/home/luis/code/AIReels/venv_aireels/lib/python3.12/site-packages/playwright/_impl/_connection.py", line 69, in send
+    return await self._connection.wrap_api_call(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/luis/code/AIReels/venv_aireels/lib/python3.12/site-packages/playwright/_impl/_connection.py", line 559, in wrap_api_call
+    raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+playwright._impl._errors.Error: Page.goto: net::ERR_ABORTED at https://www.instagram.com/
+Call log:
+  - navigating to "https://www.instagram.com/", waiting until "load"
+
+================================================================================
+🚀 SOLUCIÓN FINAL - UPLOAD A INSTAGRAM
+================================================================================
+⏰ Inicio: 2026-04-13 20:48:16
+
+🚀 EJECUTANDO SOLUCIÓN FINAL PARA UPLOAD
+⚠️  Este script manejará popups y navegará directamente a upload
+
+🎯 OBJETIVO: Upload exitoso con manejo completo de problemas
+
+✅ Módulos importados
+✅ Usuario: fiestacotoday
+✅ Video: test_video_aireels.mp4
+✅ Navegador configurado (visible, muy lento)
+
+🖥️  INICIALIZANDO NAVEGADOR...
+🖥️  Initializing browser service...
+✅ Browser service initialized (chromium)
+✅ Navegador inicializado
+
+🌐 NAVEGANDO A INSTAGRAM...
+ℹ️  URL actual: https://www.instagram.com/
+
+🔧 PASO CRÍTICO: CERRANDO TODOS LOS POPUPS...
+🔧 CERRANDO TODOS LOS POPUPS...
+🔧 Presionando Escape...
+✅ Escape 1
+✅ Escape 2
+✅ Escape 3
+✅ Escape 4
+✅ Escape 5
+🔧 Click en áreas de Not Now...
+✅ Click en (960, 702)
+✅ Click en (960, 756)
+✅ Click en (1152, 702)
+✅ Click en (768, 702)
+✅ Click en (960, 648)
+✅ Click en (1536, 108)
+✅ Click en (1728, 108)
+🔧 Buscando botones Not Now...
+⚠️  Botón encontrado: Close
+✅ Click en botón: Close
+
+📍 PASO CRÍTICO: NAVEGANDO A UPLOAD...
+📍 NAVEGANDO DIRECTAMENTE A PÁGINA DE UPLOAD...
+🌐 Intentando: https://www.instagram.com/create/select/
+ℹ️  URL actual: https://www.instagram.com/create/select/
+✅ Botón Create encontrado: div[role="button"]:has-text("Create")
+✅ Click en botón Create
+✅ Componentes creados
+
+============================================================
+📤 INICIANDO UPLOAD DEL VIDEO
+============================================================
+
+🚀 EJECUTANDO UPLOAD...
+🚀 Starting upload process for: test_video_aireels.mp4
+   Size: unknown size, Format: mp4
+✅ Video validation passed
+📍 Navigating to upload page...
+🌐 Navigating to Instagram...
+❌ Error durante ejecución: Error: Page.goto: net::ERR_ABORTED at https://www.instagram.com/
+Call log:
+  - navigating to "https://www.instagram.com/", waiting until "load"
+
+
+⚠️  Cerrando navegador...
+🧹 Cleaning up browser service...
+✅ Browser service closed
+✅ Navegador cerrado
+
+================================================================================
+🏁 FIN DE EJECUCIÓN
+================================================================================
+❌ FALLÓ
+
+🔧 ACCIONES RECOMENDADAS:
+   1. Verifica que puedes acceder manualmente a Instagram
+   2. Cierra manualmente cualquier popup de notificaciones
+   3. Navega manualmente a 'Create' -> 'Post'
+   4. Asegúrate de que 2FA está deshabilitado
+   5. Intenta el proceso manualmente primero

@@ -39,7 +39,9 @@ async def test_complete_flow():
 
         # Create test video file
         test_video_path = Path(temp_dir) / "test_video.mp4"
-        test_video_path.write_text("test video content")
+        # Crear archivo binario simulado (no texto)
+        with open(test_video_path, 'wb') as f:
+            f.write(b'\x00\x00\x00\x18ftypmp42\x00\x00\x00\x00mp42mp41demo_content')
 
         # Test 1: Import all modules
         try:
@@ -60,8 +62,11 @@ async def test_complete_flow():
         # Test 2: Create VideoInfo
         try:
             video_info = VideoInfo(path=test_video_path)
+            # Validar para calcular size_mb
+            video_info.validate()
             print(f"✅ VideoInfo created: {video_info.path.name}")
-            print(f"   Format: {video_info.format}, Size: {video_info.size_mb:.2f}MB")
+            size_str = f"{video_info.size_mb:.2f}MB" if video_info.size_mb else "N/A"
+            print(f"   Format: {video_info.format}, Size: {size_str}")
             results.append(TestResult("VideoInfo creation", True, f"Created for {video_info.path.name}"))
         except Exception as e:
             print(f"❌ VideoInfo creation failed: {e}")

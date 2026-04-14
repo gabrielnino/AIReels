@@ -1,0 +1,131 @@
+================================================================================
+🚀 UPLOAD CON MANEJO AGRESIVO DE POPUPS
+================================================================================
+⏰ Inicio: 2026-04-13 20:39:25
+
+🚀 INICIANDO UPLOAD CON MANEJO AGRESIVO DE POPUPS
+
+🎯 OBJETIVO: Upload con manejo agresivo de popups
+
+✅ Módulos importados
+✅ Usuario: fiestacotoday
+✅ Video: test_video_aireels.mp4
+✅ Navegador configurado (visible, lento)
+
+🖥️  INICIALIZANDO NAVEGADOR...
+🖥️  Initializing browser service...
+✅ Browser service initialized (chromium)
+✅ Navegador inicializado
+
+🌐 NAVEGANDO A INSTAGRAM...
+ℹ️  URL actual: https://www.instagram.com/
+
+🔧 MANEJANDO POPUPS INICIALES...
+🔍 VERIFICACIÓN DE POPUPS...
+🔍 Buscando elementos bloqueantes...
+🔍 BÚSQUEDA AGRESIVA DE POPUP DE NOTIFICACIONES...
+🔍 Buscando elementos clickeables en áreas sospechosas...
+✅ Click en área (960, 432)
+✅ Click en área (960, 540)
+✅ Click en área (960, 648)
+✅ Click en área (1536, 540)
+✅ Click en área (384, 540)
+🔍 Presionando Escape repetidamente...
+✅ Escape 1
+✅ Escape 2
+✅ Escape 3
+✅ Escape 4
+✅ Escape 5
+🔍 Buscando y cerrando modales...
+⚠️  Modal encontrado: div[data-visualcompletion="ignore"] #0
+⚠️  Modal encontrado: div[data-visualcompletion="ignore"] #1
+⚠️  Modal encontrado: div[data-visualcompletion="ignore"] #2
+⚠️  No se pudo cerrar popup de manera agresiva
+ℹ️  No se detectó popup bloqueante
+ℹ️  No se encontraron popups iniciales
+✅ Componentes creados
+
+============================================================
+📤 PASO 1: UPLOAD DEL VIDEO
+============================================================
+
+🔧 VERIFICANDO POPUPS ANTES DE UPLOAD...
+🔍 VERIFICACIÓN DE POPUPS...
+🔍 Buscando elementos bloqueantes...
+🔍 BÚSQUEDA AGRESIVA DE POPUP DE NOTIFICACIONES...
+🔍 Buscando elementos clickeables en áreas sospechosas...
+✅ Click en área (960, 432)
+✅ Click en área (960, 540)
+✅ Click en área (960, 648)
+✅ Click en área (1536, 540)
+✅ Click en área (384, 540)
+🔍 Presionando Escape repetidamente...
+✅ Escape 1
+✅ Escape 2
+✅ Escape 3
+✅ Escape 4
+✅ Escape 5
+🔍 Buscando y cerrando modales...
+⚠️  Modal encontrado: div[data-visualcompletion="ignore"] #0
+⚠️  Modal encontrado: div[data-visualcompletion="ignore"] #1
+⚠️  Modal encontrado: div[data-visualcompletion="ignore"] #2
+⚠️  No se pudo cerrar popup de manera agresiva
+ℹ️  No se detectó popup bloqueante
+
+🚀 INICIANDO UPLOAD...
+🚀 Starting upload process for: test_video_aireels.mp4
+   Size: unknown size, Format: mp4
+✅ Video validation passed
+📍 Navigating to upload page...
+🌐 Navigating to Instagram...
+✅ Navigated to Instagram
+❌ Not authenticated. Need to login first.
+❌ Cannot navigate to upload: not authenticated
+❌ Failed to navigate to upload page
+   • Status: UploadStatus.FAILED
+   • Mensaje: Failed to navigate to upload page
+❌ Upload falló
+
+🔍 DIAGNÓSTICO DEL FALLO...
+   1. Verificando autenticación...
+   • URL: https://www.instagram.com/
+   ✅ Autenticado
+
+   2. Verificando popups...
+🔍 VERIFICACIÓN DE POPUPS...
+🔍 Buscando elementos bloqueantes...
+🔍 BÚSQUEDA AGRESIVA DE POPUP DE NOTIFICACIONES...
+🔍 Buscando elementos clickeables en áreas sospechosas...
+✅ Click en área (960, 432)
+✅ Click en área (960, 540)
+✅ Click en área (960, 648)
+✅ Click en área (1536, 540)
+✅ Click en área (384, 540)
+🔍 Presionando Escape repetidamente...
+✅ Escape 1
+✅ Escape 2
+✅ Escape 3
+✅ Escape 4
+✅ Escape 5
+🔍 Buscando y cerrando modales...
+⚠️  Modal encontrado: div[data-visualcompletion="ignore"] #0
+⚠️  Modal encontrado: div[data-visualcompletion="ignore"] #1
+⚠️  Modal encontrado: div[data-visualcompletion="ignore"] #2
+⚠️  No se pudo cerrar popup de manera agresiva
+ℹ️  No se detectó popup bloqueante
+
+⚠️  Cerrando navegador...
+🧹 Cleaning up browser service...
+✅ Browser service closed
+✅ Navegador cerrado
+
+================================================================================
+🏁 FIN DE EJECUCIÓN
+================================================================================
+❌ FALLÓ
+
+🔧 POSIBLES CAUSAS:
+   1. Problemas de autenticación
+   2. Popup de notificaciones bloqueando
+   3. Selectores cambiados
+   4. Problemas de red

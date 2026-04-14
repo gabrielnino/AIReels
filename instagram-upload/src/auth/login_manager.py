@@ -202,20 +202,111 @@ class InstagramLoginManager:
     async def _perform_initial_login(self, page) -> bool:
         """Perform initial login with username and password."""
         try:
-            # Fill username and password fields
-            await page.fill('input[name="username"]', self.credentials.username)
-            await page.fill('input[name="password"]', self.credentials.password)
+            print("🔍 Looking for login form...")
 
-            # Click login button
-            await page.click('button[type="submit"]')
-            await page.wait_for_timeout(3000)
+            # Lista de selectores alternativos para campos de login
+            # ACTUALIZADO basado en diagnóstico: Instagram ahora usa name="email" y name="pass"
+            username_selectors = [
+                'input[name="email"]',  # ¡NUEVO! Instagram ahora usa "email" no "username"
+                'input[name="username"]',  # Mantener por compatibilidad
+                'input[aria-label="Phone number, username, or email"]',
+                'input[aria-label*="username"]',
+                'input[aria-label*="email"]',
+                'input[placeholder*="username"]',
+                'input[placeholder*="Username"]',
+                'input[placeholder*="email"]',
+                'input[placeholder*="Email"]',
+                'input[type="text"]:first-of-type',
+                'input:first-of-type'
+            ]
 
-            # Check if login was successful (no 2FA required)
-            try:
-                await page.wait_for_selector('svg[aria-label="Home"]', timeout=5000)
-                return True
-            except:
-                return False  # Might require 2FA
+            password_selectors = [
+                'input[name="pass"]',  # ¡NUEVO! Instagram ahora usa "pass" no "password"
+                'input[name="password"]',  # Mantener por compatibilidad
+                'input[aria-label="Password"]',
+                'input[aria-label*="password"]',
+                'input[placeholder*="password"]',
+                'input[placeholder*="Password"]',
+                'input[type="password"]',
+                'input:nth-of-type(2)'
+            ]
+
+            login_button_selectors = [
+                'button[type="submit"]',
+                'div[role="button"]:has-text("Log in")',
+                'button:has-text("Log in")',
+                'button:has-text("Log In")'
+            ]
+
+            # Intentar encontrar y llenar username con selectores alternativos
+            username_filled = False
+            for selector in username_selectors:
+                try:
+                    await page.wait_for_selector(selector, timeout=5000)
+                    await page.fill(selector, self.credentials.username)
+                    print(f"✅ Username field found with: {selector}")
+                    username_filled = True
+                    break
+                except:
+                    continue
+
+            if not username_filled:
+                print("❌ Could not find username field")
+                return False
+
+            # Intentar encontrar y llenar password con selectores alternativos
+            password_filled = False
+            for selector in password_selectors:
+                try:
+                    await page.wait_for_selector(selector, timeout=5000)
+                    await page.fill(selector, self.credentials.password)
+                    print(f"✅ Password field found with: {selector}")
+                    password_filled = True
+                    break
+                except:
+                    continue
+
+            if not password_filled:
+                print("❌ Could not find password field")
+                return False
+
+            # Intentar hacer click en botón de login con selectores alternativos
+            login_clicked = False
+            for selector in login_button_selectors:
+                try:
+                    await page.wait_for_selector(selector, timeout=5000)
+                    await page.click(selector)
+                    print(f"✅ Login button found with: {selector}")
+                    login_clicked = True
+                    break
+                except:
+                    continue
+
+            if not login_clicked:
+                print("❌ Could not find login button")
+                return False
+
+            await page.wait_for_timeout(5000)  # Wait for login to process
+
+            # Check if login was successful (no 2FA required) with multiple selectors
+            success_selectors = [
+                'svg[aria-label="Home"]',
+                'a[href="/"] svg',  # Home icon alternative
+                'div[data-testid="primary-nav"]',  # Main navigation
+                'a[href*="direct"]',  # Messages link
+                'nav'  # Any navigation element
+            ]
+
+            for selector in success_selectors:
+                try:
+                    await page.wait_for_selector(selector, timeout=10000)
+                    print(f"✅ Login successful - detected with: {selector}")
+                    return True
+                except:
+                    continue
+
+            print("⚠️  Login status uncertain - might require 2FA or have issues")
+            return False  # Might require 2FA
 
         except Exception as e:
             print(f"❌ Initial login failed: {e}")
@@ -223,44 +314,241 @@ class InstagramLoginManager:
 
     async def _is_two_factor_required(self, page) -> bool:
         """Check if two-factor authentication is required."""
-        try:
-            await page.wait_for_selector('input[name="verificationCode"]', timeout=5000)
-            return True
-        except:
-            return False
+        print("🔍 Checking for 2FA requirement...")
+
+        # Multiple selectors for 2FA code input - expanded for Instagram variations
+        two_factor_selectors = [
+            'input[name="verificationCode"]',
+            'input[name="twoFactorAuthenticationCode"]',
+            'input[name="2faCode"]',
+            'input[name="security_code"]',
+            'input[name="securityCode"]',
+            'input[name="code"]',
+            'input[name="Code"]',
+            'input[name="twoFactorCode"]',
+            'input[name="totpCode"]',
+            'input[name="otpCode"]',
+            'input[name="authenticatorCode"]',
+            'input[placeholder*="code"]',
+            'input[placeholder*="Code"]',
+            'input[placeholder*="security code"]',
+            'input[placeholder*="Security code"]',
+            'input[placeholder*="6-digit code"]',
+            'input[placeholder*="6 digit code"]',
+            'input[placeholder*="Authentication code"]',
+            'input[placeholder*="authentication code"]',
+            'input[aria-label*="code"]',
+            'input[aria-label*="Code"]',
+            'input[aria-label*="security code"]',
+            'input[aria-label*="Security code"]',
+            'input[aria-label*="authentication code"]',
+            'input[aria-label*="Authentication code"]',
+            'input[type="text"][maxlength="6"]',
+            'input[type="text"][maxlength="7"]',
+            'input[type="text"][minlength="6"]',
+            'input[type="text"][minlength="6"][maxlength="6"]',
+            'input[type="text"]:last-of-type',
+            'input:last-of-type',
+            'input[autocomplete="one-time-code"]',  # Standard for OTP fields
+            'input[inputmode="numeric"]',  # For numeric input
+            'input[pattern="[0-9]*"]'  # Pattern for numbers only
+        ]
+
+        for selector in two_factor_selectors:
+            try:
+                await page.wait_for_selector(selector, timeout=5000)
+                print(f"✅ 2FA required - detected with: {selector}")
+                return True
+            except:
+                continue
+
+        print("❌ No 2FA requirement detected")
+        return False
 
     async def _handle_two_factor_auth(self, page) -> bool:
-        """Handle two-factor authentication with manual code input.
+        """Handle two-factor authentication.
 
-        IMPORTANT: This function will pause and request manual input from the user.
+        IMPORTANT: If automatic entry fails, waits for manual input.
         """
         print("")
         print("🔢 TWO-FACTOR AUTHENTICATION (2FA) REQUIRED")
         print("===========================================")
         print("A 6-digit code has been sent to your device.")
         print("")
-        print("Please enter the code below:")
-        print("1. Check your authentication app or SMS")
-        print("2. Enter the 6-digit code")
-        print("3. Press Enter")
+        print("OPTION 1: Automatic entry (if field is found)")
+        print("OPTION 2: Manual entry (enter code in browser)")
         print("")
 
-        # Get 2FA code from user
+        # Try automatic entry first
+        auto_success = await self._try_automatic_2fa_entry(page)
+
+        if auto_success:
+            print("✅ Automatic 2FA entry successful")
+            # Handle "Trust this device" after automatic entry
+            trust_device_handled = await self._handle_trust_this_device(page)
+            if trust_device_handled:
+                print("✅ 'Trust this device' handled successfully")
+            return True
+
+        # If automatic entry fails, wait for manual entry
+        print("⚠️  Automatic entry failed - waiting for MANUAL entry")
+        print("📱 Please enter the 2FA code manually in the browser")
+        print("⏱️  Waiting 60 seconds for manual entry...")
+
+        manual_success = await self._wait_for_manual_2fa_entry(page)
+
+        if manual_success:
+            print("✅ Manual 2FA entry detected")
+            # Handle "Trust this device" after manual entry
+            trust_device_handled = await self._handle_trust_this_device(page)
+            if trust_device_handled:
+                print("✅ 'Trust this device' handled successfully")
+            return True
+
+        print("❌ 2FA failed - no code entered")
+        return False
+
+    async def _try_automatic_2fa_entry(self, page) -> bool:
+        """Try to automatically enter 2FA code."""
+        # Get 2FA code from user/env
         code = self._get_two_factor_code_from_user()
 
         # Create 2FA code object with timestamp
         two_factor_code = TwoFactorCode(code=code, timestamp=datetime.now())
 
-        print(f"🔑 Entering 2FA code: {'*' * 6}")
+        print(f"🔑 Trying automatic 2FA entry with code: {'*' * 6}")
 
-        # Fill 2FA code field
-        await page.fill('input[name="verificationCode"]', two_factor_code.code)
+        # Fill 2FA code field with alternative selectors
+        print("🔍 Looking for 2FA code input field...")
 
-        # Find and click confirmation button
-        confirm_button = page.locator('button:has-text("Confirm")').first
-        await confirm_button.click()
+        two_factor_selectors = [
+            'input[name="verificationCode"]',
+            'input[name="twoFactorAuthenticationCode"]',
+            'input[name="2faCode"]',
+            'input[name="security_code"]',
+            'input[name="securityCode"]',
+            'input[name="code"]',
+            'input[name="Code"]',
+            'input[name="twoFactorCode"]',
+            'input[name="totpCode"]',
+            'input[name="otpCode"]',
+            'input[name="authenticatorCode"]',
+            'input[placeholder*="code"]',
+            'input[placeholder*="Code"]',
+            'input[placeholder*="security code"]',
+            'input[placeholder*="Security code"]',
+            'input[placeholder*="6-digit code"]',
+            'input[placeholder*="6 digit code"]',
+            'input[placeholder*="Authentication code"]',
+            'input[placeholder*="authentication code"]',
+            'input[aria-label*="code"]',
+            'input[aria-label*="Code"]',
+            'input[aria-label*="security code"]',
+            'input[aria-label*="Security code"]',
+            'input[aria-label*="authentication code"]',
+            'input[aria-label*="Authentication code"]',
+            'input[type="text"][maxlength="6"]',
+            'input[type="text"][maxlength="7"]',
+            'input[type="text"][minlength="6"]',
+            'input[type="text"][minlength="6"][maxlength="6"]',
+            'input[type="text"]:last-of-type',
+            'input:last-of-type',
+            'input[autocomplete="one-time-code"]',
+            'input[inputmode="numeric"]',
+            'input[pattern="[0-9]*"]'
+        ]
+
+        code_filled = False
+        for selector in two_factor_selectors:
+            try:
+                await page.wait_for_selector(selector, timeout=5000)
+                await page.fill(selector, two_factor_code.code)
+                print(f"✅ 2FA code field found with: {selector}")
+                code_filled = True
+                break
+            except:
+                continue
+
+        if not code_filled:
+            print("❌ Could not find 2FA code input field with any selector")
+            print("📸 Taking screenshot for debugging...")
+            await self._save_debug_screenshot(page, "2fa_input_not_found")
+
+            # Intentar una estrategia alternativa: buscar cualquier input que parezca ser para códigos
+            print("🔍 Trying alternative strategy: looking for any input that could be for 2FA...")
+
+            # Buscar inputs con type="text" y maxlength entre 6 y 8
+            all_inputs = await page.query_selector_all('input[type="text"]')
+            for input_elem in all_inputs:
+                try:
+                    maxlength = await input_elem.get_attribute('maxlength')
+                    if maxlength and maxlength.isdigit() and 6 <= int(maxlength) <= 8:
+                        print(f"⚠️  Found input with maxlength={maxlength}, trying to fill 2FA code")
+                        await input_elem.fill(two_factor_code.code)
+                        code_filled = True
+                        print("✅ Filled 2FA code using maxlength detection")
+                        break
+                except:
+                    continue
+
+            if not code_filled:
+                print("❌ Still could not find 2FA input field")
+                return False
+
+        # Find and click confirmation button with alternative selectors
+        # Instagram puede usar diferentes textos: Confirm, Submit, Verify, Continue, etc.
+        # DEBUG ACTUAL: Instagram está usando "Continue" para 2FA
+        confirm_button_selectors = [
+            'button:has-text("Continue")',      # Instagram usa "Continue" para 2FA
+            'button:has-text("continue")',
+            'button:has-text("Continue"):not(:disabled)',
+            'div[role="button"]:has-text("Continue")',
+            'button:has-text("Confirm")',
+            'button:has-text("confirm")',
+            'button:has-text("Submit")',
+            'button:has-text("submit")',
+            'button:has-text("Verify")',
+            'button:has-text("verify")',
+            'button:has-text("Next")',
+            'button:has-text("next")',
+            'button:has-text("Done")',
+            'button:has-text("done")',
+            'button:has-text("Log In")',
+            'button:has-text("Login")',
+            'button:has-text("Sign In")',
+            'button[type="submit"]',
+            'button[type="submit"]:not(:disabled)',
+            'div[role="button"]:has-text("Confirm")',
+            'div[role="button"]:has-text("Submit")',
+            'div[role="button"]:has-text("Verify")',
+            'div[role="button"]:has-text("Continue")',
+            'input[type="submit"]',
+            'input[type="submit"]:not(:disabled)',
+            'button:enabled',  # Cualquier botón habilitado
+            'button'  # Último recurso: cualquier botón
+        ]
+
+        confirm_clicked = False
+        for selector in confirm_button_selectors:
+            try:
+                confirm_button = page.locator(selector).first
+                await confirm_button.click()
+                print(f"✅ Confirmation button found with: {selector}")
+                confirm_clicked = True
+                break
+            except:
+                continue
+
+        if not confirm_clicked:
+            print("❌ Could not find confirmation button")
+            return False
 
         await page.wait_for_timeout(3000)
+
+        # Check for "Trust this device" or similar option after 2FA
+        trust_device_handled = await self._handle_trust_this_device(page)
+        if trust_device_handled:
+            print("✅ 'Trust this device' handled successfully")
 
         # Verify 2FA was successful
         try:
@@ -278,6 +566,139 @@ class InstagramLoginManager:
 
             await self._save_debug_screenshot(page, "2fa_error")
             return False
+
+    async def _wait_for_manual_2fa_entry(self, page) -> bool:
+        """Wait for user to manually enter 2FA code in browser.
+
+        Returns:
+            bool: True if login successful after manual entry, False otherwise
+        """
+        print("⏳ Waiting for manual 2FA code entry...")
+        print("📱 User should enter code in browser and click Continue/Confirm")
+
+        try:
+            # Wait up to 60 seconds for user to manually enter code and submit
+            for i in range(60):
+                # Check if we're logged in (home icon appears)
+                try:
+                    await page.wait_for_selector('svg[aria-label="Home"]', timeout=1000)
+                    print(f"✅ Login successful after manual 2FA entry (waited {i+1}s)")
+                    return True
+                except:
+                    pass
+
+                # Check for "Trust this device" option (means 2FA was successful)
+                try:
+                    trust_selectors = [
+                        'button:has-text("Trust this device")',
+                        'button:has-text("trust this device")',
+                        'button:has-text("Trust Device")',
+                        'div[role="button"]:has-text("Trust this device")'
+                    ]
+                    for selector in trust_selectors:
+                        trust_elem = page.locator(selector).first
+                        if await trust_elem.is_visible(timeout=1000):
+                            print(f"✅ 'Trust this device' prompt detected (waited {i+1}s)")
+                            print("   User successfully entered 2FA code")
+                            return True
+                except:
+                    pass
+
+                # Check for error messages
+                try:
+                    error_elem = page.locator('[data-testid="error-alert"]').first
+                    if await error_elem.is_visible(timeout=1000):
+                        error_text = await error_elem.text_content()
+                        print(f"❌ 2FA error detected: {error_text}")
+                        return False
+                except:
+                    pass
+
+                # Wait 1 second before checking again
+                await asyncio.sleep(1)
+
+                # Show progress every 10 seconds
+                if (i + 1) % 10 == 0:
+                    print(f"   Still waiting... ({i+1}/60 seconds)")
+
+            print("❌ Timeout waiting for manual 2FA entry")
+            await self._save_debug_screenshot(page, "2fa_manual_timeout")
+            return False
+
+        except Exception as e:
+            print(f"❌ Error waiting for manual 2FA: {e}")
+            await self._save_debug_screenshot(page, "2fa_manual_error")
+            return False
+
+    async def _handle_trust_this_device(self, page) -> bool:
+        """Handle 'Trust this device' option after successful 2FA.
+
+        Instagram may show a prompt asking if you want to trust this device
+        to avoid future 2FA requests.
+
+        Returns:
+            bool: True if handled or not needed, False if there's an error
+        """
+        print("🔍 Checking for 'Trust this device' option...")
+
+        # Multiple selectors for different versions of this prompt
+        trust_device_selectors = [
+            'button:has-text("Trust this device")',
+            'button:has-text("trust this device")',
+            'button:has-text("Trust Device")',
+            'button:has-text("trust device")',
+            'button:has-text("Remember this device")',
+            'button:has-text("remember this device")',
+            'button:has-text("Save this device")',
+            'button:has-text("save this device")',
+            'div[role="button"]:has-text("Trust this device")',
+            'div[role="button"]:has-text("Save this device")',
+            'input[type="checkbox"][name="trust"]',
+            'input[type="checkbox"][name="remember"]',
+            'input[type="checkbox"][name="save"]',
+            'input[type="checkbox"]'  # Generic checkbox as last resort
+        ]
+
+        for selector in trust_device_selectors:
+            try:
+                # Check if the element exists and is visible
+                trust_element = page.locator(selector).first
+                if await trust_element.is_visible(timeout=3000):
+                    print(f"✅ Found 'Trust this device' element: {selector}")
+
+                    # Click the element
+                    await trust_element.click()
+                    print(f"✅ Clicked 'Trust this device' option")
+                    await page.wait_for_timeout(2000)
+
+                    # Check if there's a confirmation button
+                    confirm_selectors = [
+                        'button:has-text("Continue")',
+                        'button:has-text("continue")',
+                        'button:has-text("OK")',
+                        'button:has-text("ok")',
+                        'button:has-text("Confirm")',
+                        'button:has-text("confirm")',
+                        'button[type="submit"]'
+                    ]
+
+                    for confirm_selector in confirm_selectors:
+                        try:
+                            confirm_button = page.locator(confirm_selector).first
+                            if await confirm_button.is_visible(timeout=2000):
+                                await confirm_button.click()
+                                print(f"✅ Confirmed 'Trust this device' selection")
+                                await page.wait_for_timeout(2000)
+                                break
+                        except:
+                            continue
+
+                    return True
+            except:
+                continue
+
+        print("ℹ️  No 'Trust this device' option found or not needed")
+        return True  # Return True even if not found - it's optional
 
     def _get_two_factor_code_from_user(self) -> str:
         """Get 2FA code from user input.

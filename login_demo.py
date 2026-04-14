@@ -24,7 +24,7 @@ if env_path.exists():
 
     # Read credentials (simulated)
     print(f"👤 Username: fiestacotoday")
-    print(f"🔐 Password: f4vU+PtT.WUyzqN")
+    print(f"🔐 Password: RtiChUga0jI3x!D")
     print(f"🛡️  2FA Enabled: True")
 else:
     print("❌ .env.instagram file missing")

@@ -1,0 +1,115 @@
+================================================================================
+🚀 UPLOAD UNIFICADO - Mismo navegador para login y upload
+================================================================================
+⏰ Inicio: 2026-04-13 20:13:58
+
+🚀 Iniciando upload unificado (login + upload mismo navegador)
+⚠️  2FA DEBE ESTAR DESHABILITADO EN INSTAGRAM
+
+🎯 OBJETIVO: Login y upload en mismo navegador
+
+✅ Módulos importados
+✅ Usuario: fiestacotoday
+✅ 2FA: DESHABILITADO (configurado en Instagram)
+✅ Video: test_video_aireels.mp4
+✅ Navegador configurado (visible)
+
+🖥️  INICIALIZANDO NAVEGADOR ÚNICO...
+🖥️  Initializing browser service...
+✅ Browser service initialized (chromium)
+✅ Navegador inicializado
+
+🔐 HACIENDO LOGIN DIRECTO...
+🔐 Haciendo login directo en Instagram...
+✅ Username field: input[name="email"]
+✅ Password field: input[name="pass"]
+✅ Login button: div[role="button"]:has-text("Log in")
+✅ Login exitoso - en página principal
+✅ Login exitoso en navegador único
+
+⏳ Esperando posibles popups post-login...
+🔍 Verificando popup de notificaciones post-login...
+⚠️  Popup detectado: div:has-text("Notifications")
+✅ Botón encontrado: div[role="button"]:has-text("Not Now")
+✅ Click en 'Not Now'
+✅ Popup de notificaciones cerrado (post-login)
+
+🔍 BUSCANDO Y MANEJANDO POPUPS/ELEMENTOS BLOQUEANTES...
+🔍 Buscando y manejando popups/elementos bloqueantes...
+⚠️  Popup detectado: div[role="dialog"]
+✅ Botón encontrado: button:has-text("Not Now")
+✅ Click en 'Not Now'
+✅ Popup de notificaciones manejado
+🔍 Buscando elementos que intercepten clicks...
+⚠️  Elemento potencialmente bloqueante: div[tabindex="-1"] #1
+✅ Click en elemento bloqueante
+⚠️  Elemento potencialmente bloqueante: div[tabindex="-1"] #2
+✅ Elemento ocultado
+⚠️  Elemento potencialmente bloqueante: div[tabindex="-1"] #3
+✅ Click en elemento bloqueante
+⚠️  Elemento potencialmente bloqueante: div[tabindex="-1"] #4
+✅ Elemento ocultado
+✅ Elementos bloqueantes manejados
+✅ Popups/elementos bloqueantes manejados
+
+🔍 VERIFICACIÓN ESPECÍFICA: Popup de notificaciones...
+⚠️  Popup detectado: div:has-text("Notifications")
+⚠️  No se encontró botón específico, intentando alternativas...
+✅ Click fuera del popup
+✅ Popup de notificaciones cerrado (verificación adicional)
+✅ Componentes creados con mismo browser_service
+
+============================================================
+🚨 RESUMEN - LISTO PARA UPLOAD
+============================================================
+📋 USANDO MISMO NAVEGADOR PARA:
+   1. Login (ya completado)
+   2. Upload: test_video_aireels.mp4
+   3. Metadata
+   4. Publicación
+
+⏳ Iniciando upload en 5 segundos...
+   5...   4...   3...   2...   1...   🚀 SUBIENDO...          
+
+📤 SUBIENDO VIDEO...
+🚀 Starting upload process for: test_video_aireels.mp4
+   Size: unknown size, Format: mp4
+✅ Video validation passed
+📍 Navigating to upload page...
+🌐 Navigating to Instagram...
+✅ Navigated to Instagram
+✅ Already authenticated
+✅ Clicked create button
+❌ Upload modal did not appear
+❌ Failed to navigate to upload page
+   • Status: UploadStatus.FAILED
+   • Mensaje: Failed to navigate to upload page
+❌ Upload falló
+
+⚠️  Navegador mantenido abierto para verificación
+
+================================================================================
+🏁 FIN DE EJECUCIÓN
+================================================================================
+❌ FALLÓ
+
+🔧 POSIBLES CAUSAS:
+   1. Credenciales incorrectas
+   2. Instagram aún pide 2FA
+   3. Problemas de red/conexión
+   4. Selectores de Instagram cambiaron
+Exception ignored in: <function BaseSubprocessTransport.__del__ at 0x7f185e9354e0>
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/asyncio/base_subprocess.py", line 126, in __del__
+    self.close()
+  File "/usr/lib/python3.12/asyncio/base_subprocess.py", line 104, in close
+    proto.pipe.close()
+  File "/usr/lib/python3.12/asyncio/unix_events.py", line 767, in close
+    self.write_eof()
+  File "/usr/lib/python3.12/asyncio/unix_events.py", line 753, in write_eof
+    self._loop.call_soon(self._call_connection_lost, None)
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 795, in call_soon
+    self._check_closed()
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 541, in _check_closed
+    raise RuntimeError('Event loop is closed')
+RuntimeError: Event loop is closed

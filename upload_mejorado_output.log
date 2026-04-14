@@ -1,0 +1,86 @@
+================================================================================
+🚀 UPLOAD UNIFICADO MEJORADO - Manejo robusto de popups
+================================================================================
+⏰ Inicio: 2026-04-13 20:36:41
+
+🚀 Iniciando upload unificado mejorado
+⚠️  2FA DEBE ESTAR DESHABILITADO EN INSTAGRAM
+
+🎯 OBJETIVO: Login y upload en mismo navegador con manejo de popups
+
+✅ Módulos importados
+✅ Usuario: fiestacotoday
+✅ 2FA: DESHABILITADO (configurado en Instagram)
+✅ Video: test_video_aireels.mp4
+✅ Navegador configurado (visible)
+
+🖥️  INICIALIZANDO NAVEGADOR ÚNICO...
+🖥️  Initializing browser service...
+✅ Browser service initialized (chromium)
+✅ Navegador inicializado
+
+🔐 HACIENDO LOGIN DIRECTO...
+🔐 Haciendo login directo en Instagram...
+✅ Ya estamos logueados (cookies existentes)
+✅ Login exitoso en navegador único
+
+🔍 MANEJANDO POPUP DE NOTIFICACIONES POST-LOGIN...
+⚠️  Popup detectado: div[data-visualcompletion="ignore"]
+⚠️  No se encontró botón específico, intentando alternativas...
+✅ Click fuera del popup
+✅ Popup de notificaciones cerrado después del login
+✅ Componentes creados con mismo browser_service
+
+============================================================
+🚨 RESUMEN - LISTO PARA UPLOAD
+============================================================
+📋 USANDO MISMO NAVEGADOR PARA:
+   1. Login (completado)
+   2. Upload: test_video_aireels.mp4
+   3. Metadata
+   4. Publicación
+   5. Manejo de popups en cada paso
+
+⏳ Iniciando upload en 5 segundos...
+   5...   4...   3...   2...   1...   🚀 SUBIENDO...          
+
+📤 SUBIENDO VIDEO...
+🔍 Verificando popups antes de upload...
+⚠️  Popup detectado: div[data-visualcompletion="ignore"]
+⚠️  No se encontró botón específico, intentando alternativas...
+✅ Click fuera del popup
+✅ Popup de notificaciones cerrado antes de upload
+🚀 Starting upload process for: test_video_aireels.mp4
+   Size: unknown size, Format: mp4
+✅ Video validation passed
+📍 Navigating to upload page...
+🌐 Navigating to Instagram...
+✅ Navigated to Instagram
+❌ Not authenticated. Need to login first.
+❌ Cannot navigate to upload: not authenticated
+❌ Failed to navigate to upload page
+🔍 Verificando popups antes de post-upload...
+⚠️  Popup detectado: div[data-visualcompletion="ignore"]
+⚠️  No se encontró botón específico, intentando alternativas...
+✅ Click fuera del popup
+✅ Popup de notificaciones cerrado antes de post-upload
+   • Status: UploadStatus.FAILED
+   • Mensaje: Failed to navigate to upload page
+❌ Upload falló
+
+⚠️  Cerrando navegador...
+🧹 Cleaning up browser service...
+✅ Browser service closed
+✅ Navegador cerrado
+
+================================================================================
+🏁 FIN DE EJECUCIÓN
+================================================================================
+❌ FALLÓ
+
+🔧 POSIBLES CAUSAS:
+   1. Credenciales incorrectas
+   2. Instagram aún pide 2FA
+   3. Problemas de red/conexión
+   4. Selectores de Instagram cambiaron
+   5. Popup de notificaciones bloqueó la acción
