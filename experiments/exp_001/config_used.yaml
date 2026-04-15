@@ -1,0 +1,49 @@
+browser_config:
+  extra_http_headers:
+    Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8
+    Accept-Language: en-US,en;q=0.9,es;q=0.8
+  headless: false
+  slow_mo: 1000
+  user_agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML,
+    like Gecko) Chrome/120.0.0.0 Safari/537.36
+  viewport:
+    height: 1080
+    width: 1920
+data_collection:
+  logs:
+  - network
+  - console
+  metrics:
+  - load_time
+  - network_requests
+  - console_errors
+  screenshots:
+  - on_error
+  - on_success
+  - on_state_change
+date: 2026-04-13 22:15
+duration_estimate: 15 minutos
+experiment_id: exp_001
+hypothesis: "Configuraci\xF3n de navegador con comportamiento humano (headless=false,\
+  \ slow_mo=1000ms)\nevita que Instagram detecte automation y bloquee la carga.\n"
+notes: "- Este es el experimento m\xE1s b\xE1sico para validar infraestructura\n-\
+  \ Si falla, indica que Instagram detecta nuestro navegador como bot\n- \xC9xito\
+  \ aqu\xED es requisito para cualquier funcionalidad posterior"
+objective: "Probar que podemos navegar a Instagram.com sin recibir error NET::ERR_ABORTED\n\
+  que indica detecci\xF3n de automation.\n"
+test_scenario:
+  failure_handling:
+    fallback_action: adjust_browser_config_and_retry
+    max_retries: 2
+    retry_delay: 10000
+  steps:
+  - setup_browser
+  - navigate_to_instagram
+  - verify_page_loaded
+  - check_network_errors
+  success_criteria:
+  - no_net_err_aborted_error
+  - instagram_homepage_visible
+  - page_title_contains_instagram
+  - loaded_within_30_seconds
+title: "Navegaci\xF3n b\xE1sica a Instagram sin errores de red"

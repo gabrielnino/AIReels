@@ -1,0 +1,64 @@
+# 🧪 EXP-002: Verificar formulario de login visible
+
+experiment_id: "exp_002"
+title: "Verificar formulario de login accesible"
+date: "2026-04-13 22:20"
+duration_estimate: "15 minutos"
+
+objective: |
+  Verificar que después de navegar a Instagram, el formulario de login
+  (campos de usuario y contraseña) son visibles y accesibles.
+
+hypothesis: |
+  Después de navegación exitosa (EXP-001), Instagram muestra formulario
+  de login estándar con campos accesibles mediante selectores comunes.
+
+browser_config:
+  headless: false
+  slow_mo: 1000
+  user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+  viewport:
+    width: 1920
+    height: 1080
+  extra_http_headers:
+    Accept-Language: "en-US,en;q=0.9,es;q=0.8"
+    Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8"
+
+test_scenario:
+  steps:
+    - "setup_browser"
+    - "navigate_to_instagram"
+    - "check_login_form_present"
+    - "verify_username_field"
+    - "verify_password_field"
+    - "verify_login_button"
+
+  success_criteria:
+    - "login_form_visible"
+    - "username_field_accessible"
+    - "password_field_accessible"
+    - "login_button_clickable"
+
+  failure_handling:
+    max_retries: 1
+    retry_delay: 5000
+    fallback_action: "check_alternative_selectors"
+
+data_collection:
+  screenshots:
+    - "on_error"
+    - "login_form_visible"
+    - "fields_detected"
+  logs:
+    - "element_locations"
+    - "selector_matches"
+  metrics:
+    - "form_detection_time"
+    - "field_count"
+    - "selector_effectiveness"
+
+notes: |
+  - Basado en éxito de EXP-001 (navegación funciona)
+  - Selectores comunes de Instagram: input[name="username"], input[name="password"]
+  - Si formulario no está visible, usuario puede ya estar logueado
+  - Necesario para proceder con EXP-003 (ingreso de credenciales)

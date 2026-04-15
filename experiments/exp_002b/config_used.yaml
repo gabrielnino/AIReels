@@ -1,0 +1,53 @@
+browser_config:
+  extra_http_headers:
+    Accept-Language: en-US,en;q=0.9,es;q=0.8
+  headless: false
+  slow_mo: 800
+  user_agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML,
+    like Gecko) Chrome/120.0.0.0 Safari/537.36
+  viewport:
+    height: 1080
+    width: 1920
+data_collection:
+  logs:
+  - url_changes
+  - element_presence
+  - cookie_count
+  metrics:
+  - auth_confidence_score
+  - indicator_count
+  - profile_access_success
+  screenshots:
+  - authentication_indicators
+  - profile_page_if_authenticated
+  - homepage_state
+date: 2026-04-13 22:30
+duration_estimate: 10 minutos
+experiment_id: exp_002b
+hypothesis: "Usuario 'fiestacotoday' ya tiene sesi\xF3n activa en Instagram,\nlo que\
+  \ explica por qu\xE9 formulario de login no se encuentra completo\npero campos individuales\
+  \ est\xE1n presentes.\n"
+notes: "- Basado en resultados ambiguos de EXP-002\n- Campos de login presentes pero\
+  \ formulario no encontrado\n- Bot\xF3n de login no clickeable sugiere sesi\xF3n\
+  \ activa\n- Determinar esto es cr\xEDtico para decidir pr\xF3ximo paso:\n  - Si\
+  \ autenticado: Saltar directamente a upload flow\n  - Si no autenticado: Proceder\
+  \ con login completo"
+objective: "Determinar el estado actual de autenticaci\xF3n despu\xE9s de navegar\
+  \ a Instagram.\nBasado en resultados de EXP-002 que sugieren posible sesi\xF3n activa.\n"
+test_scenario:
+  failure_handling:
+    fallback_action: manual_inspection
+    max_retries: 1
+    retry_delay: 0
+  steps:
+  - setup_browser
+  - navigate_to_instagram
+  - check_authentication_indicators
+  - verify_homepage_elements
+  - test_navigation_to_profile
+  - check_cookie_state
+  success_criteria:
+  - authentication_state_determined
+  - clear_indicators_found
+  - no_ambiguous_results
+title: Determinar si ya estamos autenticados en Instagram

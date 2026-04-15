@@ -1,0 +1,45 @@
+# 🧪 PLANTILLA DE CONFIGURACIÓN DE EXPERIMENTO
+
+experiment_id: "exp_[NUMBER]"
+title: "[TÍTULO DESCRIPTIVO]"
+date: "[YYYY-MM-DD HH:MM]"
+duration_estimate: "[X minutos]"
+
+## 🎯 OBJETIVO
+[¿Qué queremos probar específicamente?]
+
+## 🤔 HIPÓTESIS
+[Hipótesis clara y comprobable]
+
+## ⚙️ PARÁMETROS
+browser_config:
+  headless: false
+  slow_mo: 1000  # ms entre acciones
+  user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+  viewport: {width: 1920, height: 1080}
+  extra_http_headers:
+    Accept-Language: "en-US,en;q=0.9"
+    Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+
+test_scenario:
+  steps:
+    - "[Paso 1]"
+    - "[Paso 2]"
+    - "[Paso 3]"
+
+  success_criteria:
+    - "[Criterio 1 de éxito]"
+    - "[Criterio 2 de éxito]"
+
+  failure_handling:
+    max_retries: 3
+    retry_delay: 5000
+    fallback_action: "document_and_exit"
+
+data_collection:
+  screenshots: ["on_error", "on_success", "on_state_change"]
+  logs: ["network", "console", "browser"]
+  metrics: ["load_time", "response_time", "element_count"]
+
+## 📝 NOTAS
+[Notas adicionales o contexto]

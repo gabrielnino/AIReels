@@ -1,0 +1,61 @@
+# 🧪 EXP-001: Navegación básica sin NET::ERR_ABORTED
+
+experiment_id: "exp_001"
+title: "Navegación básica a Instagram sin errores de red"
+date: "2026-04-13 22:15"
+duration_estimate: "15 minutos"
+
+objective: |
+  Probar que podemos navegar a Instagram.com sin recibir error NET::ERR_ABORTED
+  que indica detección de automation.
+
+hypothesis: |
+  Configuración de navegador con comportamiento humano (headless=false, slow_mo=1000ms)
+  evita que Instagram detecte automation y bloquee la carga.
+
+browser_config:
+  headless: false
+  slow_mo: 1000
+  user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+  viewport:
+    width: 1920
+    height: 1080
+  extra_http_headers:
+    Accept-Language: "en-US,en;q=0.9,es;q=0.8"
+    Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8"
+
+test_scenario:
+  steps:
+    - "setup_browser"
+    - "navigate_to_instagram"
+    - "verify_page_loaded"
+    - "check_network_errors"
+
+  success_criteria:
+    - "no_net_err_aborted_error"
+    - "instagram_homepage_visible"
+    - "page_title_contains_instagram"
+    - "loaded_within_30_seconds"
+
+  failure_handling:
+    max_retries: 2
+    retry_delay: 10000
+    fallback_action: "adjust_browser_config_and_retry"
+
+data_collection:
+  screenshots:
+    - "on_error"
+    - "on_success"
+    - "on_state_change"
+  logs:
+    - "network"
+    - "console"
+  metrics:
+    - "load_time"
+    - "network_requests"
+    - "console_errors"
+
+notes: |
+  - Este es el experimento más básico para validar infraestructura
+  - Si falla, indica que Instagram detecta nuestro navegador como bot
+  - Éxito aquí es requisito para cualquier funcionalidad posterior

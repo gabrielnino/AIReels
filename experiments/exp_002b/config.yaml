@@ -1,0 +1,66 @@
+# 🧪 EXP-002b: Verificar estado de autenticación actual
+
+experiment_id: "exp_002b"
+title: "Determinar si ya estamos autenticados en Instagram"
+date: "2026-04-13 22:30"
+duration_estimate: "10 minutos"
+
+objective: |
+  Determinar el estado actual de autenticación después de navegar a Instagram.
+  Basado en resultados de EXP-002 que sugieren posible sesión activa.
+
+hypothesis: |
+  Usuario 'fiestacotoday' ya tiene sesión activa en Instagram,
+  lo que explica por qué formulario de login no se encuentra completo
+  pero campos individuales están presentes.
+
+browser_config:
+  headless: false
+  slow_mo: 800
+  user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+  viewport:
+    width: 1920
+    height: 1080
+  extra_http_headers:
+    Accept-Language: "en-US,en;q=0.9,es;q=0.8"
+
+test_scenario:
+  steps:
+    - "setup_browser"
+    - "navigate_to_instagram"
+    - "check_authentication_indicators"
+    - "verify_homepage_elements"
+    - "test_navigation_to_profile"
+    - "check_cookie_state"
+
+  success_criteria:
+    - "authentication_state_determined"
+    - "clear_indicators_found"
+    - "no_ambiguous_results"
+
+  failure_handling:
+    max_retries: 1
+    retry_delay: 0
+    fallback_action: "manual_inspection"
+
+data_collection:
+  screenshots:
+    - "authentication_indicators"
+    - "profile_page_if_authenticated"
+    - "homepage_state"
+  logs:
+    - "url_changes"
+    - "element_presence"
+    - "cookie_count"
+  metrics:
+    - "auth_confidence_score"
+    - "indicator_count"
+    - "profile_access_success"
+
+notes: |
+  - Basado en resultados ambiguos de EXP-002
+  - Campos de login presentes pero formulario no encontrado
+  - Botón de login no clickeable sugiere sesión activa
+  - Determinar esto es crítico para decidir próximo paso:
+    - Si autenticado: Saltar directamente a upload flow
+    - Si no autenticado: Proceder con login completo
